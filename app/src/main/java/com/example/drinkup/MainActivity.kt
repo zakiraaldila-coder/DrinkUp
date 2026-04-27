@@ -1,112 +1,331 @@
-    package com.example.drinkup
-    
-    import android.os.Bundle
-    import androidx.activity.ComponentActivity
-    import androidx.activity.compose.setContent
-    import androidx.activity.enableEdgeToEdge
-    import androidx.compose.foundation.layout.*
-    import androidx.compose.material3.*
-    import androidx.compose.runtime.* // ✅ PENTING
-    import androidx.compose.ui.Modifier
-    import androidx.compose.ui.unit.dp
-    import androidx.compose.ui.tooling.preview.Preview
-    import com.example.drinkup.ui.theme.DrinkUpTheme
-    import androidx.compose.runtime.saveable.rememberSaveable
-    
-    class MainActivity : ComponentActivity() {
-        override fun onCreate(savedInstanceState: Bundle?) {
-            super.onCreate(savedInstanceState)
-            enableEdgeToEdge()
-            setContent {
-                DrinkUpTheme {
-    
-                    var air by rememberSaveable { mutableStateOf(0) }
-                    val target = 2000
-    
-                    val progress = (air.toFloat() / target).coerceIn(0f, 1f)
-    
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-    
-                        Text(
-                            text = "💧 DrinkUp",
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-    
-                        Spacer(modifier = Modifier.height(20.dp))
-                        
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = MaterialTheme.shapes.large,
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                )
-                            ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp)
-                            ) {
-    
-                                Text("Minum hari ini:")
-                                Spacer(modifier = Modifier.height(8.dp))
-    
-                                Text(
-                                    text = "$air ml",
-                                    style = MaterialTheme.typography.headlineLarge
-                                )
-    
-                                Spacer(modifier = Modifier.height(12.dp))
-    
-                                var air by rememberSaveable { mutableStateOf(0) }
-    
-                                LinearProgressIndicator(
-                                    progress = { progress },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                )
-    
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text("Progress: ${(progress * 100).toInt()}%")
-                                Text("Target: $target ml")
-                            }
-                        }
-    
-                        Spacer(modifier = Modifier.height(24.dp))
-    
-                        Button(
-                            onClick = { air += 250 },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Tambah Air +250ml")
-                        }
-    
-                        Spacer(modifier = Modifier.height(10.dp))
-    
-                        OutlinedButton(
-                            onClick = { air = 0 },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Reset")
-                        }
+package com.example.drinkup
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.drinkup.ui.theme.DrinkUpTheme
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import com.google.firebase.auth.FirebaseAuth
+
+private val MintPrimary = Color(0xFF4ECDC4)
+private val MintBg      = Color(0xFFF0FAFA)
+private val NavBg       = Color(0xFFFFFFFF)
+private val TextGray    = Color(0xFF9E9E9E)
+
+object Routes {
+    const val SPLASH       = "splash"
+    const val WELCOME      = "welcome"
+    const val LOGIN        = "login"
+    const val DASHBOARD    = "dashboard"
+    const val STATISTIK    = "statistik"
+    const val REMINDER     = "reminder"
+    const val SETTINGS     = "settings"
+    const val EDIT_PROFILE = "edit_profile"
+    const val WEEKLY_GOAL      = "weekly_goal"
+    const val COMPLETE_PROFILE = "complete_profile"
+}
+
+data class NavItem(val route: String, val icon: ImageVector, val label: String)
+
+class MainActivity : ComponentActivity() {
+    private val authViewModel: AuthViewModel by viewModels()
+
+    private fun createNotificationChannel() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "drink_channel", "Drink Reminder", NotificationManager.IMPORTANCE_HIGH
+            )
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        createNotificationChannel()
+        setContent { DrinkUpTheme { DrinkUpApp(authViewModel) } }
+    }
+}
+
+@Composable
+fun DrinkUpApp(authViewModel: AuthViewModel) {
+    val navController    = rememberNavController()
+    var currentRoute     by remember { mutableStateOf(Routes.DASHBOARD) }
+    var showNavBar       by remember { mutableStateOf(false) }
+    var currentIntake    by remember { mutableStateOf(0) }
+    val targetIntake     = 2000
+    var streak           by remember { mutableStateOf(0) }
+    val history          = remember { mutableStateMapOf<String, Int>() }
+    var showTambahScreen by remember { mutableStateOf(false) }
+
+    // Reactive — terpicu saat logout/login/session expired
+    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+
+    DisposableEffect(Unit) {
+        val listener = FirebaseAuth.AuthStateListener { fa ->
+            isLoggedIn = fa.currentUser != null
+        }
+        FirebaseAuth.getInstance().addAuthStateListener(listener)
+        onDispose { FirebaseAuth.getInstance().removeAuthStateListener(listener) }
+    }
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            showNavBar   = false
+            currentRoute = Routes.WELCOME
+            navController.navigate(Routes.WELCOME) { popUpTo(0) { inclusive = true } }
+        }
+    }
+
+    val navItems = listOf(
+        NavItem(Routes.DASHBOARD, Icons.Rounded.Home,          "Home"),
+        NavItem(Routes.STATISTIK, Icons.Rounded.BarChart,      "Statistik"),
+        NavItem(Routes.REMINDER,  Icons.Rounded.Notifications, "Reminder"),
+        NavItem(Routes.SETTINGS,  Icons.Rounded.Person,        "Settings"),
+    )
+
+    fun goToDashboard() {
+        showNavBar   = true
+        currentRoute = Routes.DASHBOARD
+        navController.navigate(Routes.DASHBOARD) { popUpTo(0) { inclusive = true } }
+    }
+
+    fun goToCompleteProfile() {
+        showNavBar   = false
+        currentRoute = Routes.COMPLETE_PROFILE
+        navController.navigate(Routes.COMPLETE_PROFILE) { popUpTo(0) { inclusive = true } }
+    }
+
+    Scaffold(
+        containerColor = MintBg,
+        bottomBar = {
+            if (showNavBar) {
+                DrinkUpNavBar(
+                    items        = navItems,
+                    currentRoute = currentRoute,
+                    onItemClick  = { route -> currentRoute = route; navController.navigate(route) }
+                )
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController    = navController,
+            startDestination = Routes.SPLASH,
+            modifier         = Modifier.padding(innerPadding)
+        ) {
+            composable(Routes.SPLASH) {
+                showNavBar = false
+                SplashScreen {
+                    val user = FirebaseAuth.getInstance().currentUser
+                    if (user != null) {
+                        showNavBar = true
+                        navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                    } else {
+                        navController.navigate(Routes.WELCOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
                     }
                 }
             }
+
+            composable(Routes.WELCOME) {
+                showNavBar = false
+                WelcomeScreen(
+                    onLoginClick    = { navController.navigate(Routes.LOGIN) },
+                    onRegisterClick = { navController.navigate(Routes.LOGIN) }
+                )
+            }
+
+            // LOGIN = Sign In + Register dalam 1 screen dengan tab switcher
+            composable(Routes.LOGIN) {
+                showNavBar = false
+                LoginScreen(
+                    authViewModel     = authViewModel,
+                    onLoginSuccess    = { goToDashboard() },
+                    onRegisterSuccess = { goToDashboard() },
+                    onGoogleNewUser   = { goToCompleteProfile() },
+                    onGoogleOldUser   = { goToDashboard() }
+                )
+            }
+
+            composable(Routes.DASHBOARD) {
+                showNavBar   = true
+                currentRoute = Routes.DASHBOARD
+                DashboardScreen(
+                    currentIntake = currentIntake,
+                    targetIntake  = targetIntake,
+                    onAddWater    = { amount ->
+                        currentIntake += amount
+                        val today = java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                        history[today] = currentIntake
+                        if (currentIntake >= targetIntake) streak++
+                    },
+                    streak       = streak,
+                    onShowTambah = { showTambahScreen = true },
+                    onNavigateToWeeklyGoal = {
+                        showNavBar   = false
+                        currentRoute = Routes.WEEKLY_GOAL
+                        navController.navigate(Routes.WEEKLY_GOAL)
+                    }
+                )
+                if (showTambahScreen) {
+                    TambahScreen(
+                        onTambah = { amount ->
+                            currentIntake += amount
+                            val today = java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                            history[today] = currentIntake
+                            if (currentIntake >= targetIntake) streak++
+                            showTambahScreen = false
+                        },
+                        onBatalkan = { showTambahScreen = false }
+                    )
+                }
+            }
+
+            composable(Routes.WEEKLY_GOAL) {
+                showNavBar   = false
+                currentRoute = Routes.WEEKLY_GOAL
+                WeeklyGoalScreen(
+                    currentIntake = currentIntake,
+                    targetIntake  = targetIntake,
+                    onBack        = { showNavBar = true; currentRoute = Routes.DASHBOARD; navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.STATISTIK) {
+                showNavBar   = true; currentRoute = Routes.STATISTIK
+                StatistikScreen(history, targetIntake)
+            }
+
+            composable(Routes.REMINDER) {
+                showNavBar   = true; currentRoute = Routes.REMINDER
+                ReminderScreen()
+            }
+
+            composable(Routes.SETTINGS) {
+                showNavBar   = true; currentRoute = Routes.SETTINGS
+                SettingsScreen(
+                    onLogout = { authViewModel.logout() },
+                    onNavigateToEditProfile = { navController.navigate(Routes.EDIT_PROFILE) }
+                )
+            }
+
+            composable(Routes.EDIT_PROFILE) {
+                showNavBar   = false; currentRoute = Routes.EDIT_PROFILE
+                EditProfileScreen(
+                    onNavigateBack = { showNavBar = true; currentRoute = Routes.SETTINGS; navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.COMPLETE_PROFILE) {
+                showNavBar   = false
+                currentRoute = Routes.COMPLETE_PROFILE
+                CompleteProfileScreen(
+                    authViewModel    = authViewModel,
+                    onProfileComplete = {
+                        // Setelah gender disimpan → langsung ke Dashboard
+                        goToDashboard()
+                    }
+                )
+            }
         }
-    } // ✅ WAJIB ADA
-    
-    @Composable
-    fun Greeting(name: String, modifier: Modifier = Modifier) {
-        Text(text = "Hello $name!", modifier = modifier)
     }
-    
-    @Preview(showBackground = true)
-    @Composable
-    fun GreetingPreview() {
-        DrinkUpTheme {
-            Greeting("Android")
+}
+
+@Composable
+fun DrinkUpNavBar(items: List<NavItem>, currentRoute: String, onItemClick: (String) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Transparent)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(12.dp, RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .background(NavBg)
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+        ) {
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                items.forEach { item ->
+                    NavBarItem(item, currentRoute == item.route) { onItemClick(item.route) }
+                }
+            }
         }
     }
+}
+
+@Composable
+fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
+    val animOffset by animateFloatAsState(if (isActive) -18f else 0f, label = "off")
+    val animScale  by animateFloatAsState(if (isActive) 1f else 0.85f, label = "sc")
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication        = null,
+                onClick           = onClick
+            )
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .graphicsLayer { translationY = animOffset }
+    ) {
+        Box(
+            modifier         = Modifier
+                .size(48.dp)
+                .graphicsLayer { scaleX = animScale; scaleY = animScale }
+                .background(if (isActive) MintPrimary else Color.Transparent, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = item.icon,
+                contentDescription = item.label,
+                tint               = if (isActive) Color.White else TextGray,
+                modifier           = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            item.label,
+            fontSize   = 10.sp,
+            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+            color      = if (isActive) MintPrimary else TextGray
+        )
+    }
+}

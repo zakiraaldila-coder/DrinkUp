@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Theme utama app (tidak diubah) -->
     <style name="Theme.DrinkUp" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.DrinkUp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#E0F7FA</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.DrinkUp</item>
+    </style>
+
 </resources>

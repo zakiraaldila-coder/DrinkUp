@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "526517229934",
+    "project_id": "drinkup-5d3af",
+    "storage_bucket": "drinkup-5d3af.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:526517229934:android:471a30a85070c83b90897f",
+        "android_client_info": {
+          "package_name": "com.example.drinkup"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "526517229934-se8ohkooatknag572bmid0eef1q965eo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.drinkup",
+            "certificate_hash": "e6cd6c570f82238ad424e0067426849b7bb8560b"
+          }
+        },
+        {
+          "client_id": "526517229934-m055ussfnh878f1sv9k1okq3gd78df99.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4Ky7rxmGYndJ7ijMPnZ62mom5lO_mBwQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "526517229934-m055ussfnh878f1sv9k1okq3gd78df99.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

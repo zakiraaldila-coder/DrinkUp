@@ -6,7 +6,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,9 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 
-// Warna hari chip aktif tetap hardcoded (warna aksen visual)
-private val DayChipActive = Color(0xFF26C6DA)
-
 // ── Data Model ────────────────────────────────────────────────────────────────
 data class ReminderItem(
     val id        : Int,
@@ -40,9 +37,7 @@ data class ReminderItem(
     val minute    : Int,
     val days      : List<String>,
     val isActive  : Boolean,
-    val sound     : String  = "flowing",   // "flowing" | "drop"
-    val vibration : Boolean = true,
-    val icon      : String  = "💧"
+    val vibration : Boolean = true
 )
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -55,10 +50,10 @@ fun ReminderScreen() {
     var reminders by remember {
         mutableStateOf(
             listOf(
-                ReminderItem(0, "Minum Air Pagi",  8,  0,  listOf("MON","WED","FRI"), true,  "flowing", true),
-                ReminderItem(1, "Minum Air Siang", 10, 30, listOf("EVERYDAY"),        true,  "flowing", true),
-                ReminderItem(2, "Minum Air Sore",  14, 0,  listOf("WEEKENDS"),        false, "drop",    false),
-                ReminderItem(3, "Minum Air Malam", 17, 15, listOf("MON","TUE","THU"), true,  "drop",    true),
+                ReminderItem(0, "Minum Air Pagi",  8,  0,  listOf("MON","WED","FRI"), true,  true),
+                ReminderItem(1, "Minum Air Siang", 10, 30, listOf("EVERYDAY"),        true,  true),
+                ReminderItem(2, "Minum Air Sore",  14, 0,  listOf("WEEKENDS"),        false, false),
+                ReminderItem(3, "Minum Air Malam", 17, 15, listOf("MON","TUE","THU"), true,  true),
             )
         )
     }
@@ -73,7 +68,6 @@ fun ReminderScreen() {
         }
     } else null
 
-    // ── Toggle reminder on/off ─────────────────────────────────────────────
     fun toggleReminder(item: ReminderItem, on: Boolean) {
         if (on && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
@@ -91,7 +85,6 @@ fun ReminderScreen() {
                         minute     = it.minute,
                         days       = it.days,
                         label      = it.label,
-                        sound      = it.sound,
                         vibration  = it.vibration
                     )
                 } else {
@@ -102,16 +95,14 @@ fun ReminderScreen() {
         }
     }
 
-    // ── Tambah reminder baru ───────────────────────────────────────────────
     fun addReminder(
         hour      : Int,
         minute    : Int,
         label     : String,
         days      : List<String>,
-        sound     : String,
         vibration : Boolean
     ) {
-        val newId = (reminders.maxOfOrNull { it.id } ?: -1) + 1
+        val newId   = (reminders.maxOfOrNull { it.id } ?: -1) + 1
         val newItem = ReminderItem(
             id        = newId,
             label     = label,
@@ -119,9 +110,7 @@ fun ReminderScreen() {
             minute    = minute,
             days      = days,
             isActive  = true,
-            sound     = sound,
-            vibration = vibration,
-            icon      = "💧"
+            vibration = vibration
         )
         AlarmHelper.scheduleReminder(
             context    = context,
@@ -130,13 +119,12 @@ fun ReminderScreen() {
             minute     = minute,
             days       = days,
             label      = label,
-            sound      = sound,
             vibration  = vibration
         )
         reminders = reminders + newItem
     }
 
-    // ── UI ─────────────────────────────────────────────────────────────────
+    // ── UI ────────────────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -146,7 +134,6 @@ fun ReminderScreen() {
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-
             // ── Page Title ─────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
@@ -156,14 +143,14 @@ fun ReminderScreen() {
                         fontWeight = FontWeight.ExtraBold,
                         color      = colorScheme.onBackground
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text     = "Keep your hydration flowing throughout the day.",
                         fontSize = 14.sp,
                         color    = colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
             }
 
             // ── + Tambah Reminder Button ───────────────────────────────────
@@ -180,19 +167,11 @@ fun ReminderScreen() {
                         contentColor   = colorScheme.onPrimary
                     )
                 ) {
-                    Icon(
-                        imageVector        = Icons.Filled.Add,
-                        contentDescription = null,
-                        modifier           = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text       = "+ Tambah Reminder",
-                        fontSize   = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("+ Tambah Reminder", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
             }
 
             // ── Permission Warning ─────────────────────────────────────────
@@ -264,16 +243,13 @@ fun ReminderScreen() {
                 }
             } else {
                 items(reminders, key = { it.id }) { item ->
-                    ReminderCard(
-                        item     = item,
-                        onToggle = { on -> toggleReminder(item, on) }
-                    )
+                    ReminderCard(item = item, onToggle = { on -> toggleReminder(item, on) })
                 }
             }
 
-            // ── Smart Reminders Info Card ──────────────────────────────────
+            // ── Info Card ──────────────────────────────────────────────────
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -289,7 +265,7 @@ fun ReminderScreen() {
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 16.dp)
                                 .offset(y = 8.dp),
-                            color    = Color(0x33000000)
+                            color = Color(0x33000000)
                         )
                         Column(modifier = Modifier.padding(24.dp)) {
                             Text(
@@ -298,7 +274,7 @@ fun ReminderScreen() {
                                 fontWeight = FontWeight.ExtraBold,
                                 color      = colorScheme.onTertiaryContainer
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(
                                 text       = "We'll space out your alerts based on your daily goal and waking hours for optimal cellular hydration.",
                                 fontSize   = 13.sp,
@@ -309,7 +285,7 @@ fun ReminderScreen() {
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
 
@@ -318,8 +294,8 @@ fun ReminderScreen() {
             AddReminderSheet(
                 sheetState = sheetState,
                 onDismiss  = { showAddSheet = false },
-                onSave     = { hour, minute, label, days, sound, vibration ->
-                    addReminder(hour, minute, label, days, sound, vibration)
+                onSave     = { hour, minute, label, days, vibration ->
+                    addReminder(hour, minute, label, days, vibration)
                     showAddSheet = false
                 }
             )
@@ -344,8 +320,6 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-
-            // Jam + Toggle
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -376,9 +350,8 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // Hari chips
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 item.days.forEach { day ->
                     Box(
@@ -409,8 +382,7 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
 fun AddReminderSheet(
     sheetState : SheetState,
     onDismiss  : () -> Unit,
-    // Signature baru: tambah sound & vibration
-    onSave     : (hour: Int, minute: Int, label: String, days: List<String>, sound: String, vibration: Boolean) -> Unit
+    onSave     : (hour: Int, minute: Int, label: String, days: List<String>, vibration: Boolean) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -420,7 +392,6 @@ fun AddReminderSheet(
     var reminderLabel  by remember { mutableStateOf("") }
     var vibrationOn    by remember { mutableStateOf(true) }
     var selectedDays   by remember { mutableStateOf(setOf("MON","TUE","WED","THU","FRI")) }
-    var selectedSound  by remember { mutableStateOf("flowing") }
 
     val allDays = listOf("S","M","T","W","T","F","S")
     val dayKeys = listOf("SUN","MON","TUE","WED","THU","FRI","SAT")
@@ -446,11 +417,7 @@ fun AddReminderSheet(
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.Filled.ArrowBack,
-                        contentDescription = "Kembali",
-                        tint = colorScheme.onSurface
-                    )
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = colorScheme.onSurface)
                 }
                 Text(
                     text       = "Tambah Reminder",
@@ -459,11 +426,7 @@ fun AddReminderSheet(
                     color      = colorScheme.onSurface
                 )
                 IconButton(onClick = {}) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = null,
-                        tint = colorScheme.onSurface
-                    )
+                    Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colorScheme.onSurface)
                 }
             }
 
@@ -541,9 +504,9 @@ fun AddReminderSheet(
                             }
                         }
 
-                        // AM/PM
+                        // AM / PM
                         Column(
-                            modifier = Modifier.padding(start = 8.dp),
+                            modifier            = Modifier.padding(start = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Box(
@@ -551,7 +514,8 @@ fun AddReminderSheet(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (isAm) colorScheme.primary else colorScheme.surfaceVariant)
                                     .clickable { isAm = true }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     "AM",
@@ -566,7 +530,8 @@ fun AddReminderSheet(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (!isAm) colorScheme.primary else colorScheme.surfaceVariant)
                                     .clickable { isAm = false }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     "PM",
@@ -580,9 +545,9 @@ fun AddReminderSheet(
                 }
             }
 
-            // Hint geser
+            // Hint
             Row(
-                modifier          = Modifier
+                modifier              = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -663,11 +628,10 @@ fun AddReminderSheet(
                                 .size(42.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isSelected) DayChipActive else colorScheme.surfaceVariant
+                                    if (isSelected) colorScheme.secondary else colorScheme.surfaceVariant
                                 )
                                 .clickable {
-                                    selectedDays = if (isSelected)
-                                        selectedDays - key else selectedDays + key
+                                    selectedDays = if (isSelected) selectedDays - key else selectedDays + key
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -682,39 +646,6 @@ fun AddReminderSheet(
                 }
 
                 Spacer(Modifier.height(24.dp))
-
-                // ── Bunyi Notifikasi ───────────────────────────────────────
-                Text(
-                    text          = "BUNYI NOTIFIKASI",
-                    fontSize      = 11.sp,
-                    fontWeight    = FontWeight.SemiBold,
-                    color         = colorScheme.onSurfaceVariant,
-                    letterSpacing = 1.sp
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    SoundOption(
-                        modifier   = Modifier.weight(1f),
-                        icon       = "〰️",
-                        title      = "Flowing Stream",
-                        subtitle   = "Suara Air Mengalir",
-                        isSelected = selectedSound == "flowing",
-                        onClick    = { selectedSound = "flowing" }
-                    )
-                    SoundOption(
-                        modifier   = Modifier.weight(1f),
-                        icon       = "🔔",
-                        title      = "Gentle Drop",
-                        subtitle   = "Tetesan Air",
-                        isSelected = selectedSound == "drop",
-                        onClick    = { selectedSound = "drop" }
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
 
                 // ── Getaran ────────────────────────────────────────────────
                 Card(
@@ -765,24 +696,19 @@ fun AddReminderSheet(
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Save Button ────────────────────────────────────────────
+                // ── Simpan Button ──────────────────────────────────────────
                 Button(
                     onClick = {
-                        // Konversi 12-jam → 24-jam
                         val actualHour = when {
                             !isAm && selectedHour != 12 -> selectedHour + 12
                             isAm && selectedHour == 12  -> 0
                             else                        -> selectedHour
                         }
-                        // Jika semua 7 hari dipilih → EVERYDAY
-                        val finalDays = if (selectedDays.size == 7)
-                            listOf("EVERYDAY")
-                        else
-                            dayKeys.filter { it in selectedDays }
-
+                        val finalDays  = if (selectedDays.size == 7) listOf("EVERYDAY")
+                        else dayKeys.filter { it in selectedDays }
                         val finalLabel = reminderLabel.ifBlank { "Minum Air" }
 
-                        onSave(actualHour, selectedMinute, finalLabel, finalDays, selectedSound, vibrationOn)
+                        onSave(actualHour, selectedMinute, finalLabel, finalDays, vibrationOn)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -803,50 +729,6 @@ fun AddReminderSheet(
                 }
 
                 Spacer(Modifier.height(32.dp))
-            }
-        }
-    }
-}
-
-// ── Sound Option Card ─────────────────────────────────────────────────────────
-@Composable
-fun SoundOption(
-    modifier   : Modifier,
-    icon       : String,
-    title      : String,
-    subtitle   : String,
-    isSelected : Boolean,
-    onClick    : () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Card(
-        modifier  = modifier.clickable(onClick = onClick),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border    = if (isSelected) BorderStroke(0.dp, Color.Transparent) else null
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(icon, fontSize = 24.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(title,    fontWeight = FontWeight.Bold, fontSize = 13.sp, color = colorScheme.onSurface)
-                Text(subtitle, fontSize = 11.sp, color = colorScheme.onSurfaceVariant)
-            }
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("✓", fontSize = 11.sp, color = colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-                }
             }
         }
     }

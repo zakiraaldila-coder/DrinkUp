@@ -1,8 +1,17 @@
 package com.example.drinkup
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -25,37 +34,33 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.drinkup.ui.theme.DrinkUpTheme
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
+import androidx.core.app.ActivityCompat
 
 private val MintPrimary = Color(0xFF4ECDC4)
-private val MintBg      = Color(0xFFF0FAFA)
-private val NavBg       = Color(0xFFFFFFFF)
 private val TextGray    = Color(0xFF9E9E9E)
 
 object Routes {
-    const val SPLASH       = "splash"
-    const val WELCOME      = "welcome"
-    const val LOGIN        = "login"
-    const val REGISTER = "register"
-    const val DASHBOARD    = "dashboard"
-    const val STATISTIK    = "statistik"
-    const val REMINDER     = "reminder"
-    const val SETTINGS     = "settings"
-    const val EDIT_PROFILE = "edit_profile"
+    const val SPLASH           = "splash"
+    const val WELCOME          = "welcome"
+    const val LOGIN            = "login"
+    const val REGISTER         = "register"
+    const val DASHBOARD        = "dashboard"
+    const val STATISTIK        = "statistik"
+    const val REMINDER         = "reminder"
+    const val SETTINGS         = "settings"
+    const val EDIT_PROFILE     = "edit_profile"
     const val WEEKLY_GOAL      = "weekly_goal"
     const val COMPLETE_PROFILE = "complete_profile"
-    const val TAMBAH = "tambah"
+    const val TAMBAH           = "tambah"
 }
 
 data class NavItem(val route: String, val icon: ImageVector, val label: String)
@@ -63,13 +68,67 @@ data class NavItem(val route: String, val icon: ImageVector, val label: String)
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
 
+    // ── Runtime permission launcher ────────────────────────────────────────
+    private val requestNotifPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (!isGranted) {
+                android.widget.Toast.makeText(
+                    this,
+                    "Izin notifikasi diperlukan agar pengingat bisa tampil",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+    // ── Buat Notification Channel ──────────────────────────────────────────
     private fun createNotificationChannel() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // ✅ Hapus channel lama yang pakai sound default
+            manager.deleteNotificationChannel("drink_channel")
+
+            // Kalau channel baru sudah ada, skip
+            if (manager.getNotificationChannel(ReminderReceiver.CHANNEL_ID) != null) return
+
+            val soundUri: Uri = try {
+                Uri.parse("android.resource://${packageName}/${R.raw.drink_reminder}")
+            } catch (e: Exception) {
+                android.media.RingtoneManager.getDefaultUri(
+                    android.media.RingtoneManager.TYPE_NOTIFICATION
+                )
+            }
+
+            val audioAttr = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
             val channel = NotificationChannel(
-                "drink_channel", "Drink Reminder", NotificationManager.IMPORTANCE_HIGH
-            )
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(channel)
+                ReminderReceiver.CHANNEL_ID,   // ✅ pakai konstanta dari ReminderReceiver
+                "Drink Reminder",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description          = "Reminder minum air harian DrinkUp"
+                enableVibration(true)
+                vibrationPattern     = longArrayOf(0, 400, 200, 400)
+                setSound(soundUri, audioAttr)  // ✅ sound custom
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    // ── Minta permission notifikasi (Android 13+) ──────────────────────────
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                }
+            }
         }
     }
 
@@ -77,37 +136,32 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
-        createNotificationChannel()
+
+        createNotificationChannel()   // ✅ buat channel dengan sound custom
+        askNotificationPermission()   // ✅ minta izin notifikasi ke user
+
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
-
-            DrinkUpTheme(
-                darkTheme = themeViewModel.isDarkMode
-            ) {
-                DrinkUpApp(
-                    authViewModel,
-                    themeViewModel
-                )
+            DrinkUpTheme(darkTheme = themeViewModel.isDarkMode) {
+                DrinkUpApp(authViewModel, themeViewModel)
             }
         }
     }
 }
 
+// ── App Composable ─────────────────────────────────────────────────────────────
 @Composable
 fun DrinkUpApp(
-    authViewModel: AuthViewModel,
-    themeViewModel: ThemeViewModel
+    authViewModel  : AuthViewModel,
+    themeViewModel : ThemeViewModel
 ) {
-    val navController    = rememberNavController()
-    var currentRoute     by remember { mutableStateOf(Routes.DASHBOARD) }
-    var showNavBar       by remember { mutableStateOf(false) }
-    val intakeViewModel  : IntakeViewModel = viewModel()
+    val navController   = rememberNavController()
+    var currentRoute    by remember { mutableStateOf(Routes.DASHBOARD) }
+    var showNavBar      by remember { mutableStateOf(false) }
+    val intakeViewModel : IntakeViewModel = viewModel()
 
-    // Flag: splash sudah selesai baru boleh cek auth state untuk redirect
-    var splashDone by remember { mutableStateOf(false) }
-
-    // Reactive — terpicu saat logout/login/session expired
-    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+    var splashDone  by remember { mutableStateOf(false) }
+    var isLoggedIn  by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
 
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { fa ->
@@ -116,7 +170,6 @@ fun DrinkUpApp(
         FirebaseAuth.getInstance().addAuthStateListener(listener)
         onDispose { FirebaseAuth.getInstance().removeAuthStateListener(listener) }
     }
-
 
     val navItems = listOf(
         NavItem(Routes.DASHBOARD, Icons.Rounded.Home,          "Home"),
@@ -128,7 +181,7 @@ fun DrinkUpApp(
     fun goToDashboard() {
         showNavBar   = true
         currentRoute = Routes.DASHBOARD
-        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) authViewModel.startListeningUser(uid)
         navController.navigate(Routes.DASHBOARD) { popUpTo(0) { inclusive = true } }
     }
@@ -166,15 +219,11 @@ fun DrinkUpApp(
                         authViewModel.startListeningUser(user.uid)
                         showNavBar = true
                         navController.navigate(Routes.DASHBOARD) {
-                            popUpTo(Routes.SPLASH) {
-                                inclusive = true
-                            }
+                            popUpTo(Routes.SPLASH) { inclusive = true }
                         }
                     } else {
                         navController.navigate(Routes.WELCOME) {
-                            popUpTo(Routes.SPLASH) {
-                                inclusive = true
-                            }
+                            popUpTo(Routes.SPLASH) { inclusive = true }
                         }
                     }
                 }
@@ -188,7 +237,6 @@ fun DrinkUpApp(
                 )
             }
 
-            // LOGIN = tab Sign In
             composable(Routes.LOGIN) {
                 showNavBar = false
                 LoginScreen(
@@ -201,7 +249,6 @@ fun DrinkUpApp(
                 )
             }
 
-            // REGISTER = LoginScreen dengan tab Register aktif
             composable(Routes.REGISTER) {
                 showNavBar = false
                 LoginScreen(
@@ -219,16 +266,16 @@ fun DrinkUpApp(
             }
 
             composable(Routes.DASHBOARD) {
-                showNavBar = true
+                showNavBar   = true
                 currentRoute = Routes.DASHBOARD
                 DashboardScreen(
                     onShowTambah = {
-                        showNavBar = false
+                        showNavBar   = false
                         currentRoute = Routes.TAMBAH
                         navController.navigate(Routes.TAMBAH)
                     },
                     onNavigateToWeeklyGoal = {
-                        showNavBar = false
+                        showNavBar   = false
                         currentRoute = Routes.WEEKLY_GOAL
                         navController.navigate(Routes.WEEKLY_GOAL)
                     },
@@ -241,26 +288,29 @@ fun DrinkUpApp(
                 currentRoute = Routes.WEEKLY_GOAL
                 WeeklyGoalScreen(
                     intakeViewModel = intakeViewModel,
-                    onBack          = { showNavBar = true; currentRoute = Routes.DASHBOARD; navController.popBackStack() }
+                    onBack = {
+                        showNavBar   = true
+                        currentRoute = Routes.DASHBOARD
+                        navController.popBackStack()
+                    }
                 )
             }
 
             composable(Routes.STATISTIK) {
                 showNavBar   = true
                 currentRoute = Routes.STATISTIK
-
                 StatistikScreen(intakeViewModel = intakeViewModel)
             }
 
             composable(Routes.REMINDER) {
-                showNavBar   = true; currentRoute = Routes.REMINDER
+                showNavBar   = true
+                currentRoute = Routes.REMINDER
                 ReminderScreen()
             }
 
             composable(Routes.SETTINGS) {
                 showNavBar   = true
                 currentRoute = Routes.SETTINGS
-
                 SettingsScreen(
                     themeViewModel = themeViewModel,
                     onLogout = {
@@ -279,7 +329,6 @@ fun DrinkUpApp(
             composable(Routes.TAMBAH) {
                 showNavBar   = false
                 currentRoute = Routes.TAMBAH
-
                 TambahScreen(
                     onTambah = { amount ->
                         intakeViewModel.addIntake(amount)
@@ -300,9 +349,14 @@ fun DrinkUpApp(
             }
 
             composable(Routes.EDIT_PROFILE) {
-                showNavBar   = false; currentRoute = Routes.EDIT_PROFILE
+                showNavBar   = false
+                currentRoute = Routes.EDIT_PROFILE
                 EditProfileScreen(
-                    onNavigateBack = { showNavBar = true; currentRoute = Routes.SETTINGS; navController.popBackStack() }
+                    onNavigateBack = {
+                        showNavBar   = true
+                        currentRoute = Routes.SETTINGS
+                        navController.popBackStack()
+                    }
                 )
             }
 
@@ -310,19 +364,21 @@ fun DrinkUpApp(
                 showNavBar   = false
                 currentRoute = Routes.COMPLETE_PROFILE
                 CompleteProfileScreen(
-                    authViewModel    = authViewModel,
-                    onProfileComplete = {
-                        // Setelah gender disimpan → langsung ke Dashboard
-                        goToDashboard()
-                    }
+                    authViewModel     = authViewModel,
+                    onProfileComplete = { goToDashboard() }
                 )
             }
         }
     }
 }
 
+// ── Bottom Navigation Bar ──────────────────────────────────────────────────────
 @Composable
-fun DrinkUpNavBar(items: List<NavItem>, currentRoute: String, onItemClick: (String) -> Unit) {
+fun DrinkUpNavBar(
+    items        : List<NavItem>,
+    currentRoute : String,
+    onItemClick  : (String) -> Unit
+) {
     val navBg = MaterialTheme.colorScheme.surface
     Box(
         modifier = Modifier
@@ -354,7 +410,7 @@ fun DrinkUpNavBar(items: List<NavItem>, currentRoute: String, onItemClick: (Stri
 @Composable
 fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
     val animOffset by animateFloatAsState(if (isActive) -18f else 0f, label = "off")
-    val animScale  by animateFloatAsState(if (isActive) 1f else 0.85f, label = "sc")
+    val animScale  by animateFloatAsState(if (isActive) 1f else 0.85f,  label = "sc")
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
@@ -369,7 +425,7 @@ fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
             .graphicsLayer { translationY = animOffset }
     ) {
         Box(
-            modifier         = Modifier
+            modifier = Modifier
                 .size(48.dp)
                 .graphicsLayer { scaleX = animScale; scaleY = animScale }
                 .background(if (isActive) MintPrimary else Color.Transparent, CircleShape),

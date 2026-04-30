@@ -378,7 +378,17 @@ fun DashboardScreen(
             Spacer(Modifier.height(12.dp))
 
             // ── TUJUAN MINGGUAN ───────────────────────────────────────────────
-            val weeklyProgress = (progress * 100).toInt().coerceAtMost(100)
+            // Hitung weeklyProgress dari weeklyHistory (Firestore) — konsisten dengan WeeklyGoalScreen
+            val sdf          = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val todayDow     = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
+            val mondayOffset = -todayDow
+            val weeklyTotal  = (0..6).sumOf { i ->
+                val c       = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, mondayOffset + i) }
+                val dateKey = sdf.format(c.time)
+                intakeState.weeklyHistory[dateKey] ?: 0
+            }
+            val weeklyTarget   = intakeState.userTarget * 7
+            val weeklyProgress = ((weeklyTotal.toFloat() / weeklyTarget) * 100).toInt().coerceAtMost(100)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()

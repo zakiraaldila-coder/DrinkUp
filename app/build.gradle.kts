@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.example.drinkup"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.drinkup"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
 
         versionCode = 1
         versionName = "1.0"
@@ -45,7 +45,7 @@ dependencies {
 
     // ── AndroidX Core ────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation(libs.androidx.activity.compose)
 
     // ── Compose BOM ──────────────────────────────────────────────
@@ -61,6 +61,8 @@ dependencies {
 
     // ── Lifecycle & ViewModel ─────────────────────────────────────
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
     // ── Splash Screen ─────────────────────────────────────────────
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -69,11 +71,11 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
 
     // ── Firebase BOM + services ───────────────────────────────────
-    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
+    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
-    implementation("com.google.firebase:firebase-storage")          // ← Storage (tanpa -ktx)
+    implementation("com.google.firebase:firebase-storage")
 
     // ── Google Sign-In ────────────────────────────────────────────
     implementation("com.google.android.gms:play-services-auth:21.3.0")

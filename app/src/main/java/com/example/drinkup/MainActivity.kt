@@ -239,18 +239,17 @@ fun DrinkUpApp(
             composable(Routes.WEEKLY_GOAL) {
                 showNavBar   = false
                 currentRoute = Routes.WEEKLY_GOAL
-                val intakeState by intakeViewModel.state.collectAsState()
                 WeeklyGoalScreen(
-                    currentIntake = intakeState.todayTotal,
-                    targetIntake  = 2000,
-                    onBack        = { showNavBar = true; currentRoute = Routes.DASHBOARD; navController.popBackStack() }
+                    intakeViewModel = intakeViewModel,
+                    onBack          = { showNavBar = true; currentRoute = Routes.DASHBOARD; navController.popBackStack() }
                 )
             }
 
             composable(Routes.STATISTIK) {
-                showNavBar   = true; currentRoute = Routes.STATISTIK
-                val intakeState by intakeViewModel.state.collectAsState()
-                StatistikScreen(intakeState.history, 2000)
+                showNavBar   = true
+                currentRoute = Routes.STATISTIK
+
+                StatistikScreen(intakeViewModel = intakeViewModel)
             }
 
             composable(Routes.REMINDER) {

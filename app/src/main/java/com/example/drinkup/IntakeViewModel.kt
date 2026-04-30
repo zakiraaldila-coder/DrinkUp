@@ -17,11 +17,13 @@ data class IntakeEntry(
 )
 
 data class IntakeState(
-    val todayTotal   : Int              = 0,
-    val todayEntries : List<IntakeEntry> = emptyList(),
-    val history      : Map<String, Int>  = emptyMap(),   // "MM-dd" -> total ml
-    val streak       : Int              = 0,
-    val lastDrinkAt  : Long?            = null           // timestamp terakhir minum
+    val todayTotal    : Int              = 0,
+    val todayEntries  : List<IntakeEntry> = emptyList(),
+    val history       : Map<String, Int>  = emptyMap(),   // "MM-dd" -> total ml
+    val weeklyHistory : Map<String, Int>  = emptyMap(),   // "yyyy-MM-dd" -> total ml (7 hari terakhir)
+    val streak        : Int              = 0,
+    val lastDrinkAt   : Long?            = null,          // timestamp terakhir minum
+    val userTarget    : Int              = 2000           // target harian dari Firestore (kebutuhanAir atau berat*35)
 )
 
 class IntakeViewModel : ViewModel() {
@@ -44,6 +46,17 @@ class IntakeViewModel : ViewModel() {
     fun startListening() {
         val uid = auth.currentUser?.uid ?: return
         listenerReg?.remove()
+
+        // Load target user dari Firestore — REALTIME agar update saat berat badan diubah
+        db.collection("users").document(uid)
+            .addSnapshotListener { doc, _ ->
+                if (doc != null && doc.exists()) {
+                    val kebutuhan  = doc.getLong("kebutuhanAir")?.toInt()
+                    val beratBadan = doc.getLong("beratBadan")?.toInt() ?: 0
+                    val target     = kebutuhan ?: if (beratBadan > 0) beratBadan * 35 else 2000
+                    _state.value   = _state.value.copy(userTarget = target)
+                }
+            }
 
         // Listen entries hari ini secara realtime
         listenerReg = db.collection("users")
@@ -71,6 +84,12 @@ class IntakeViewModel : ViewModel() {
                     lastDrinkAt  = lastDrink
                 )
 
+                // Sinkronkan hari ini ke weeklyHistory secara realtime
+                val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val updatedWeekly = _state.value.weeklyHistory.toMutableMap()
+                updatedWeekly[todayDate] = total
+                _state.value = _state.value.copy(weeklyHistory = updatedWeekly)
+
                 // Update summary harian di parent doc (untuk history)
                 if (entries.isNotEmpty()) {
                     db.collection("users").document(uid)
@@ -81,6 +100,7 @@ class IntakeViewModel : ViewModel() {
 
         // Load history (semua hari) sekali
         loadHistory(uid)
+        loadWeeklyHistory(uid)
     }
 
     private fun loadHistory(uid: String) {
@@ -144,6 +164,39 @@ class IntakeViewModel : ViewModel() {
             .add(entry)
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onError(it.message ?: "Gagal menyimpan") }
+    }
+
+    // ── Load 7 hari terakhir untuk WeeklyGoalScreen ──────────────────────────
+    private fun loadWeeklyHistory(uid: String) {
+        val cal = Calendar.getInstance()
+        val last7Days = (0..6).map { offset ->
+            val c = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, -offset) }
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(c.time)
+        }
+
+        db.collection("users").document(uid)
+            .collection("intake")
+            .get()
+            .addOnSuccessListener { snap ->
+                val weeklyMap = mutableMapOf<String, Int>()
+                snap.documents.forEach { doc ->
+                    val date  = doc.getString("date") ?: return@forEach
+                    val total = doc.getLong("total")?.toInt() ?: 0
+                    if (date in last7Days) weeklyMap[date] = total
+                }
+                // Pastikan hari ini selalu ada (realtime listener akan update)
+                val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                if (!weeklyMap.containsKey(todayDate)) weeklyMap[todayDate] = _state.value.todayTotal
+                _state.value = _state.value.copy(weeklyHistory = weeklyMap)
+            }
+    }
+
+    // ── Load ulang weekly history (dipanggil saat todayTotal berubah) ─────────
+    fun refreshWeeklyToday() {
+        val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val updated   = _state.value.weeklyHistory.toMutableMap()
+        updated[todayDate] = _state.value.todayTotal
+        _state.value = _state.value.copy(weeklyHistory = updated)
     }
 
     // ── Stop listener saat tidak dipakai ─────────────────────────────────────

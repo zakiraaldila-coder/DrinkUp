@@ -17,43 +17,49 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.*
 
 // Warna air tetap hardcoded (warna visual animasi)
 private val WgWater1 = Color(0xFF4FC3F7)
 private val WgTeal   = Color(0xFF26C6DA)
 
-private data class DayData(
-    val label   : String,
-    val intake  : Int,
-    val target  : Int = 2000
-)
+// Label hari dalam seminggu (Senin=0 ... Minggu=6)
+private val DAY_LABELS = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
 
 @Composable
 fun WeeklyGoalScreen(
-    currentIntake : Int,
-    targetIntake  : Int,
-    onBack        : () -> Unit = {}
+    intakeViewModel : IntakeViewModel,
+    onBack          : () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val intakeState by intakeViewModel.state.collectAsState()
 
-    val dayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-    val days = listOf(
-        DayData("Sen", 2200, targetIntake),
-        DayData("Sel", 1800, targetIntake),
-        DayData("Rab", 2400, targetIntake),
-        DayData("Kam", 1600, targetIntake),
-        DayData("Jum", currentIntake, targetIntake),
-        DayData("Sab", 0, targetIntake),
-        DayData("Min", 0, targetIntake),
-    )
-    val todayIndex = (dayOfWeek + 5) % 7
+    // ── Bangun data 7 hari dari weeklyHistory (Firestore) ────────────────────
+    val sdf        = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    val weeklyTotal  = days.sumOf { it.intake }
-    val weeklyTarget = targetIntake * 7
-    val weeklyPct    = (weeklyTotal.toFloat() / weeklyTarget).coerceIn(0f, 1f)
-    val weeklyPctInt = (weeklyPct * 100).toInt()
+    // Hari ini dalam minggu: Senin=0 ... Minggu=6
+    val todayDow   = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
+
+    // Urut dari Senin minggu ini hingga Minggu
+    val mondayOffset = -todayDow
+    val weekDays = (0..6).map { i ->
+        val c       = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, mondayOffset + i) }
+        val dateKey = sdf.format(c.time)
+        val intake  = intakeState.weeklyHistory[dateKey] ?: 0
+        Triple(DAY_LABELS[i], dateKey, intake)
+    }
+
+    val targetIntake  = intakeState.userTarget
+    val weeklyTarget  = targetIntake * 7
+    val weeklyTotal   = weekDays.sumOf { it.third }
+    val weeklyPct     = (weeklyTotal.toFloat() / weeklyTarget).coerceIn(0f, 1f)
+    val weeklyPctInt  = (weeklyPct * 100).toInt()
+
+    val daysHit       = weekDays.count { it.third >= targetIntake && it.third > 0 }
+    val activeDays    = weekDays.count { it.third > 0 }
+    val avgIntake     = weeklyTotal / 7
+    val bestLabel     = weekDays.maxByOrNull { it.third }?.first ?: "-"
 
     val animArc by animateFloatAsState(
         targetValue   = weeklyPct,
@@ -69,14 +75,6 @@ fun WeeklyGoalScreen(
         else                -> "Mulai hari ini, tubuhmu butuh air! 💧"
     }
 
-    data class Badge(val emoji: String, val title: String, val desc: String, val unlocked: Boolean)
-    val badges = listOf(
-        Badge("🚀", "Fast Starter",    "Capai 100% target di Senin & Selasa", days[0].intake >= days[0].target && days[1].intake >= days[1].target),
-        Badge("⚡", "Midweek Hero",    "Capai 100% target di Rabu & Kamis",   days[2].intake >= days[2].target && days[3].intake >= days[3].target),
-        Badge("🏆", "Weekly Warrior",  "Capai 100% target selama 7 hari",     days.all { it.intake >= it.target }),
-        Badge("💎", "Hydration Elite", "Total mingguan melebihi 15 liter",    weeklyTotal >= 15000),
-    )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -86,11 +84,11 @@ fun WeeklyGoalScreen(
 
         // ── HEADER ───────────────────────────────────────────────────────────
         Row(
-            modifier              = Modifier
+            modifier          = Modifier
                 .fillMaxWidth()
                 .background(colorScheme.surface)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalAlignment     = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
@@ -169,8 +167,10 @@ fun WeeklyGoalScreen(
                         )
                     }
 
+                    val weeklyTotalL  = String.format("%.2f", weeklyTotal / 1000f)
+                    val weeklyTargetL = String.format("%.1f", weeklyTarget / 1000f)
                     Text(
-                        "Kamu sudah minum ${weeklyTotal / 1000f}L dari ${weeklyTarget / 1000f}L target mingguan.",
+                        "Kamu sudah minum ${weeklyTotalL}L dari ${weeklyTargetL}L target mingguan.",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color      = colorScheme.onPrimaryContainer.copy(alpha = 0.80f),
                             lineHeight = 20.sp
@@ -186,9 +186,9 @@ fun WeeklyGoalScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                            val stroke   = 16.dp.toPx()
-                            val padding  = stroke / 2f
-                            val arcRect  = androidx.compose.ui.geometry.Rect(
+                            val stroke  = 16.dp.toPx()
+                            val padding = stroke / 2f
+                            val arcRect = androidx.compose.ui.geometry.Rect(
                                 left   = padding,
                                 top    = padding,
                                 right  = size.width  - padding,
@@ -228,7 +228,6 @@ fun WeeklyGoalScreen(
                 border   = BorderStroke(1.dp, colorScheme.outlineVariant)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    val bestDay = days.maxByOrNull { it.intake }
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -250,7 +249,7 @@ fun WeeklyGoalScreen(
                                 )
                             )
                             Text(
-                                bestDay?.label ?: "-",
+                                bestLabel,
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     color      = colorScheme.onSurface,
                                     fontWeight = FontWeight.ExtraBold
@@ -261,7 +260,7 @@ fun WeeklyGoalScreen(
 
                     Spacer(Modifier.height(20.dp))
 
-                    val maxIntake = days.maxOf { it.target }.toFloat()
+                    val maxBar = maxOf(weekDays.maxOf { it.third }, targetIntake).toFloat()
                     Row(
                         modifier              = Modifier
                             .fillMaxWidth()
@@ -269,13 +268,13 @@ fun WeeklyGoalScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment     = Alignment.Bottom
                     ) {
-                        days.forEachIndexed { idx, day ->
-                            val barFrac  = (day.intake / maxIntake).coerceIn(0f, 1f)
-                            val isToday  = idx == todayIndex
+                        weekDays.forEachIndexed { idx, (label, _, intake) ->
+                            val barFrac  = (intake / maxBar).coerceIn(0f, 1f)
+                            val isToday  = idx == todayDow
                             val barColor = when {
-                                day.intake == 0 -> colorScheme.surfaceVariant
-                                isToday         -> WgTeal
-                                else            -> WgWater1
+                                intake == 0 -> colorScheme.surfaceVariant
+                                isToday     -> WgTeal
+                                else        -> WgWater1
                             }
 
                             val animBar by animateFloatAsState(
@@ -311,7 +310,7 @@ fun WeeklyGoalScreen(
                                 }
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    day.label,
+                                    label,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color      = if (isToday) colorScheme.onSurface else colorScheme.onSurfaceVariant,
                                         fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
@@ -330,15 +329,12 @@ fun WeeklyGoalScreen(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val daysHit = days.count { it.intake >= it.target && it.intake > 0 }
                 StatMiniCard(
                     modifier = Modifier.weight(1f),
                     icon     = "✅",
                     label    = "HARI TERCAPAI",
                     value    = "$daysHit / 7"
                 )
-                val activeDays = days.count { it.intake > 0 }
-                val avgIntake  = if (activeDays > 0) weeklyTotal / activeDays else 0
                 StatMiniCard(
                     modifier = Modifier.weight(1f),
                     icon     = "📊",
@@ -383,29 +379,6 @@ fun WeeklyGoalScreen(
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
-
-            // ── WEEKLY BADGES ────────────────────────────────────────────────
-            Text(
-                "Weekly Badges",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    color      = colorScheme.onBackground,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            badges.forEach { badge ->
-                BadgeRow(
-                    emoji    = badge.emoji,
-                    title    = badge.title,
-                    desc     = badge.desc,
-                    unlocked = badge.unlocked
-                )
-                Spacer(Modifier.height(10.dp))
-            }
-
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -444,95 +417,6 @@ private fun StatMiniCard(
                     fontWeight = FontWeight.ExtraBold
                 )
             )
-        }
-    }
-}
-
-@Composable
-private fun BadgeRow(
-    emoji    : String,
-    title    : String,
-    desc     : String,
-    unlocked : Boolean
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val bgColor   = if (unlocked) colorScheme.tertiaryContainer else colorScheme.surfaceVariant
-    val textColor = if (unlocked) colorScheme.onTertiaryContainer else colorScheme.onSurfaceVariant
-    val iconAlpha = if (unlocked) 1f else 0.35f
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        color    = bgColor,
-        border   = if (unlocked) BorderStroke(1.dp, WgWater1.copy(alpha = 0.4f))
-        else BorderStroke(1.dp, colorScheme.outline)
-    ) {
-        Row(
-            modifier          = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier         = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (unlocked) WgWater1.copy(alpha = 0.20f)
-                        else colorScheme.outline.copy(alpha = 0.3f)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    emoji,
-                    fontSize = 22.sp,
-                    color    = Color.Unspecified.copy(alpha = iconAlpha)
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        color      = textColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    desc,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color      = colorScheme.onSurfaceVariant,
-                        lineHeight = 16.sp
-                    )
-                )
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            if (unlocked) {
-                Surface(
-                    shape = CircleShape,
-                    color = WgTeal.copy(alpha = 0.15f)
-                ) {
-                    Icon(
-                        Icons.Rounded.CheckCircle, null,
-                        tint     = WgTeal,
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(20.dp)
-                    )
-                }
-            } else {
-                Text(
-                    "LOCKED",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color         = colorScheme.onSurfaceVariant,
-                        letterSpacing = 0.5.sp,
-                        fontWeight    = FontWeight.SemiBold
-                    )
-                )
-            }
         }
     }
 }

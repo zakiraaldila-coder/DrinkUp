@@ -26,19 +26,13 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
-private val EP_NavyDark      = Color(0xFF0D1B4B)
-private val EP_NavyMid       = Color(0xFF1A2F6B)
-private val EP_TealAccent    = Color(0xFF00BFA5)
-private val EP_BgGray        = Color(0xFFF2F4F8)
-private val EP_CardWhite     = Color(0xFFFFFFFF)
-private val EP_TextPrimary   = Color(0xFF0D1B4B)
-private val EP_TextSecondary = Color(0xFF8A94A6)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     onNavigateBack: () -> Unit = {}
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val auth      = FirebaseAuth.getInstance()
     val firestore = FirebaseFirestore.getInstance()
     val uid       = auth.currentUser?.uid
@@ -53,12 +47,12 @@ fun EditProfileScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Load data dari Firestore sekali
     LaunchedEffect(uid) {
-        if (uid != null) {
+        if (uid != null && !isInitialized) {
             firestore.collection("users").document(uid)
-                .addSnapshotListener { doc, _ ->
-                    if (doc != null && doc.exists() && !isInitialized) {
+                .get()
+                .addOnSuccessListener { doc ->
+                    if (doc != null && doc.exists()) {
                         namaLengkap   = doc.getString("namaLengkap") ?: ""
                         emailDisplay  = doc.getString("email") ?: auth.currentUser?.email ?: ""
                         beratBadanStr = doc.getLong("beratBadan")?.takeIf { it > 0 }?.toString() ?: ""
@@ -80,14 +74,22 @@ fun EditProfileScreen(
         if (namaLengkap.isBlank()) { snackMsg = "Nama tidak boleh kosong"; return }
         if (uid == null) { snackMsg = "Tidak ada user aktif"; return }
         isLoading = true
+        val kebutuhanAir = beratBadan * 35
         firestore.collection("users").document(uid)
-            .update(mapOf("namaLengkap" to namaLengkap.trim(), "beratBadan" to beratBadan))
-            .addOnSuccessListener { isLoading = false; snackMsg = "Profil berhasil disimpan ✓"; onNavigateBack() }
+            .update(mapOf(
+                "namaLengkap"  to namaLengkap.trim(),
+                "beratBadan"   to beratBadan,
+                "kebutuhanAir" to kebutuhanAir
+            ))
+            .addOnSuccessListener {
+                isLoading = false
+                onNavigateBack()
+            }
             .addOnFailureListener { isLoading = false; snackMsg = "Gagal: ${it.message}" }
     }
 
     Scaffold(
-        containerColor = EP_BgGray,
+        containerColor = colorScheme.background,
         snackbarHost   = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -101,20 +103,20 @@ fun EditProfileScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(EP_CardWhite)
+                    .background(colorScheme.surface)
                     .padding(horizontal = 8.dp, vertical = 12.dp),
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, "Kembali", tint = EP_TextPrimary)
+                    Icon(Icons.Filled.ArrowBack, "Kembali", tint = colorScheme.onSurface)
                 }
-                Text("Edit Profil", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = EP_TextPrimary)
+                Text("Edit Profil", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
                 Box(
-                    modifier = Modifier.size(36.dp).clip(CircleShape).background(EP_BgGray),
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Person, null, tint = EP_TextSecondary, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.Person, null, tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -122,10 +124,7 @@ fun EditProfileScreen(
 
             // ── Avatar berdasarkan gender ────────────────────────────────────
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                GenderAvatar(
-                    gender   = gender,
-                    size     = 110.dp
-                )
+                GenderAvatar(gender = gender, size = 110.dp)
             }
 
             Spacer(Modifier.height(10.dp))
@@ -141,7 +140,7 @@ fun EditProfileScreen(
                 color     = when (gender.uppercase()) {
                     "L"  -> Color(0xFF1565C0)
                     "P"  -> Color(0xFFAD1457)
-                    else -> EP_TextSecondary
+                    else -> colorScheme.onSurfaceVariant
                 },
                 textAlign = TextAlign.Center,
                 modifier  = Modifier.fillMaxWidth()
@@ -152,7 +151,7 @@ fun EditProfileScreen(
                 text          = "PREMIUM MEMBER",
                 fontSize      = 11.sp,
                 fontWeight    = FontWeight.Bold,
-                color         = EP_TextSecondary,
+                color         = colorScheme.onSurfaceVariant,
                 letterSpacing = 2.sp,
                 textAlign     = TextAlign.Center,
                 modifier      = Modifier.fillMaxWidth()
@@ -163,26 +162,26 @@ fun EditProfileScreen(
             // ── Form ─────────────────────────────────────────────────────────
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
 
-                Text("Nama Lengkap", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = EP_TextPrimary)
+                Text("Nama Lengkap", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value         = namaLengkap,
                     onValueChange = { namaLengkap = it },
                     modifier      = Modifier.fillMaxWidth(),
                     shape         = RoundedCornerShape(16.dp),
-                    placeholder   = { Text("Nama kamu", color = EP_TextSecondary) },
+                    placeholder   = { Text("Nama kamu", color = colorScheme.onSurfaceVariant) },
                     colors        = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor      = EP_TealAccent,
+                        focusedBorderColor      = colorScheme.secondary,
                         unfocusedBorderColor    = Color.Transparent,
-                        focusedContainerColor   = EP_CardWhite,
-                        unfocusedContainerColor = EP_CardWhite
+                        focusedContainerColor   = colorScheme.surface,
+                        unfocusedContainerColor = colorScheme.surface
                     ),
                     singleLine = true
                 )
 
                 Spacer(Modifier.height(20.dp))
 
-                Text("Alamat Email", fontSize = 14.sp, color = EP_TextSecondary)
+                Text("Alamat Email", fontSize = 14.sp, color = colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value         = emailDisplay,
@@ -190,17 +189,17 @@ fun EditProfileScreen(
                     modifier      = Modifier.fillMaxWidth(),
                     shape         = RoundedCornerShape(16.dp),
                     enabled       = false,
-                    trailingIcon  = { Icon(Icons.Filled.Lock, null, tint = EP_TextSecondary, modifier = Modifier.size(18.dp)) },
+                    trailingIcon  = { Icon(Icons.Filled.Lock, null, tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     colors        = OutlinedTextFieldDefaults.colors(
                         disabledBorderColor     = Color.Transparent,
-                        disabledContainerColor  = EP_CardWhite,
-                        disabledTextColor       = EP_TextSecondary
+                        disabledContainerColor  = colorScheme.surface,
+                        disabledTextColor       = colorScheme.onSurfaceVariant
                     )
                 )
 
                 Spacer(Modifier.height(20.dp))
 
-                Text("Berat Badan (kg)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = EP_TextPrimary)
+                Text("Berat Badan (kg)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value         = beratBadanStr,
@@ -208,21 +207,21 @@ fun EditProfileScreen(
                     modifier      = Modifier.fillMaxWidth(),
                     shape         = RoundedCornerShape(16.dp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    placeholder   = { Text("Contoh: 65", color = EP_TextSecondary) },
+                    placeholder   = { Text("Contoh: 65", color = colorScheme.onSurfaceVariant) },
                     trailingIcon  = {
                         Box(
                             modifier = Modifier
                                 .padding(end = 8.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(EP_BgGray)
+                                .background(colorScheme.surfaceVariant)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) { Text("kg", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = EP_TextSecondary) }
+                        ) { Text("kg", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurfaceVariant) }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor      = EP_TealAccent,
+                        focusedBorderColor      = colorScheme.secondary,
                         unfocusedBorderColor    = Color.Transparent,
-                        focusedContainerColor   = EP_CardWhite,
-                        unfocusedContainerColor = EP_CardWhite
+                        focusedContainerColor   = colorScheme.surface,
+                        unfocusedContainerColor = colorScheme.surface
                     ),
                     singleLine = true
                 )
@@ -233,29 +232,51 @@ fun EditProfileScreen(
                 Card(
                     modifier  = Modifier.fillMaxWidth(),
                     shape     = RoundedCornerShape(20.dp),
-                    colors    = CardDefaults.cardColors(containerColor = Color(0xFFD6EEF8)),
+                    colors    = CardDefaults.cardColors(containerColor = colorScheme.tertiaryContainer),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✦", fontSize = 18.sp, color = EP_NavyMid)
+                            Text("✦", fontSize = 18.sp, color = colorScheme.onTertiaryContainer)
                             Spacer(Modifier.width(8.dp))
-                            Text("Kalkulasi Target Otomatis", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = EP_NavyMid)
+                            Text(
+                                "Kalkulasi Target Otomatis",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onTertiaryContainer
+                            )
                         }
                         Spacer(Modifier.height(6.dp))
-                        Text("Target harian Anda disesuaikan secara dinamis berdasarkan berat badan saat ini.",
-                            fontSize = 12.sp, color = EP_TextSecondary, lineHeight = 18.sp)
+                        Text(
+                            "Target harian Anda disesuaikan secara dinamis berdasarkan berat badan saat ini.",
+                            fontSize = 12.sp,
+                            color = colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                            lineHeight = 18.sp
+                        )
                         Spacer(Modifier.height(12.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Bottom) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
                             Text(
                                 text       = if (beratBadan > 0) "%,d".format(targetOtomatis) else "—",
                                 fontSize   = 40.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color      = EP_NavyDark
+                                color      = colorScheme.onTertiaryContainer
                             )
                             if (beratBadan > 0) {
                                 Spacer(Modifier.width(4.dp))
-                                Column { Spacer(Modifier.height(16.dp)); Text("MILILITER / HARI", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = EP_TextSecondary, letterSpacing = 0.5.sp) }
+                                Column {
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(
+                                        "MILILITER / HARI",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -268,10 +289,17 @@ fun EditProfileScreen(
                     enabled  = !isLoading,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape    = RoundedCornerShape(28.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = EP_NavyDark, contentColor = Color.White)
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.primary,
+                        contentColor   = colorScheme.onPrimary
+                    )
                 ) {
-                    if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else { Text("✓ ", fontSize = 18.sp, fontWeight = FontWeight.Bold); Text("Simpan Perubahan", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                    if (isLoading) {
+                        CircularProgressIndicator(color = colorScheme.onPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("✓ ", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Simpan Perubahan", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 Spacer(Modifier.height(32.dp))

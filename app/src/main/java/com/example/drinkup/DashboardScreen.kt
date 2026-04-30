@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.font.FontStyle
@@ -28,48 +27,41 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.*
 
-private val DashBg      = Color(0xFFF0F4F8)
-private val DashNavy    = Color(0xFF0D2D5E)
-private val DashBlue    = Color(0xFF1565C0)
-private val DashCard    = Color(0xFFFFFFFF)
-private val DashHint    = Color(0xFF90A4AE)
-private val DashWater1  = Color(0xFF4FC3F7)
-private val DashWater2  = Color(0xFF0288D1)
-private val DashTeal    = Color(0xFF26C6DA)
-private val DashWeekly  = Color(0xFFE3F2FD)
+// Warna air tetap hardcoded karena ini warna visual animasi gelombang
+private val DashWater1 = Color(0xFF4FC3F7)
+private val DashWater2 = Color(0xFF0288D1)
 
 @Composable
 fun DashboardScreen(
-    currentIntake          : Int,
-    targetIntake           : Int,
-    onAddWater             : (Int) -> Unit,
-    streak                 : Int,
     onShowTambah           : () -> Unit = {},
-    onNavigateToWeeklyGoal : () -> Unit = {},   // ← BARU: navigasi ke halaman tujuan mingguan
-    authViewModel          : AuthViewModel = viewModel()
+    onNavigateToWeeklyGoal : () -> Unit = {},
+    authViewModel          : AuthViewModel   = viewModel(),
+    intakeViewModel        : IntakeViewModel = viewModel()
 ) {
-    // Ambil nama user dari Firestore secara realtime
-    var userName by remember { mutableStateOf("Kamu") }
+    val colorScheme = MaterialTheme.colorScheme
 
-    LaunchedEffect(Unit) {
-        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-        if (uid != null) {
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(uid)
-                .get()
-                .addOnSuccessListener { doc ->
-                    userName = doc.getString("namaLengkap") ?: "Kamu"
-                }
-        }
-    }
+    val userData by authViewModel.userData.collectAsState()
+    val userName      = userData.namaLengkap.ifBlank { "Kamu" }
+    val dynamicTarget = if (userData.beratBadan > 0) userData.beratBadan * 35 else 2000
 
-    val progress = (currentIntake.toFloat() / targetIntake).coerceIn(0f, 1f)
+    val intakeState   by intakeViewModel.state.collectAsState()
+    val currentIntake  = intakeState.todayTotal
+    val streak         = intakeState.streak
+
+    LaunchedEffect(Unit) { intakeViewModel.startListening() }
+
+    val progress = (currentIntake.toFloat() / dynamicTarget).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue   = progress,
         animationSpec = tween(1200, easing = FastOutSlowInEasing),
         label         = "progress"
     )
+
+    val lastDrinkText = intakeState.lastDrinkAt?.let { ts ->
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(ts))
+    } ?: "--:--"
+
+    val gelasHariIni = (currentIntake / 250).coerceAtLeast(0)
 
     val hour     = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -79,7 +71,6 @@ fun DashboardScreen(
         else      -> "Selamat Malam,"
     }
 
-    // Quotes
     val quotes = listOf(
         "\"Air adalah energi kehidupan. Berikan tubuhmu bahan bakar terbaik hari ini.\"",
         "\"Mulai hari dengan segelas air — investasi terbaik untuk tubuhmu.\"",
@@ -87,7 +78,6 @@ fun DashboardScreen(
     )
     val todayQuote = quotes[Calendar.getInstance().get(Calendar.DAY_OF_YEAR) % quotes.size]
 
-    // Infinite wave animation
     val inf = rememberInfiniteTransition(label = "inf")
     val waveOffset by inf.animateFloat(
         0f, 1f,
@@ -98,7 +88,7 @@ fun DashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DashBg)
+            .background(colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -113,20 +103,19 @@ fun DashboardScreen(
                 Column {
                     Text(
                         greeting,
-                        style = MaterialTheme.typography.bodyLarge.copy(color = DashHint)
+                        style = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurfaceVariant)
                     )
                     Text(
                         "$userName!",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            color      = DashNavy,
+                            color      = colorScheme.onBackground,
                             fontWeight = FontWeight.ExtraBold
                         )
                     )
                 }
-                // Streak badge
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color(0xFFFFF3E0)
+                    color = Color(0xFFE65100).copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier          = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -151,8 +140,8 @@ fun DashboardScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape    = RoundedCornerShape(20.dp),
-                color    = DashCard,
-                border   = BorderStroke(1.dp, Color(0xFFE8EEF4))
+                color    = colorScheme.surface,
+                border   = BorderStroke(1.dp, colorScheme.outlineVariant)
             ) {
                 Row(
                     modifier          = Modifier.padding(16.dp),
@@ -163,7 +152,7 @@ fun DashboardScreen(
                     Text(
                         todayQuote,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color      = DashNavy,
+                            color      = colorScheme.onSurface,
                             fontStyle  = FontStyle.Italic,
                             lineHeight = 22.sp
                         ),
@@ -172,7 +161,7 @@ fun DashboardScreen(
                     Spacer(Modifier.width(8.dp))
                     Icon(
                         Icons.Rounded.Refresh, null,
-                        tint     = DashHint,
+                        tint     = colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -187,27 +176,25 @@ fun DashboardScreen(
                     .height(300.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Ring luar abu-abu
+                val ringColor = colorScheme.surfaceVariant
                 Box(
                     modifier         = Modifier
                         .size(260.dp)
                         .drawBehind {
                             drawCircle(
-                                color = Color(0xFFE0E8F0),
+                                color = ringColor,
                                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = 18.dp.toPx())
                             )
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    // Lingkaran air dengan wave
                     Box(
                         modifier         = Modifier
                             .size(230.dp)
                             .clip(CircleShape)
-                            .background(Color.White),
+                            .background(colorScheme.surface),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Wave fill
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val fillHeight = size.height * animatedProgress
                             val waveAmp    = 12.dp.toPx()
@@ -219,7 +206,6 @@ fun DashboardScreen(
                                 right  = size.width,
                                 bottom = size.height
                             ) {
-                                // Gelombang bawah (lebih gelap)
                                 val path2 = androidx.compose.ui.graphics.Path()
                                 path2.moveTo(0f, size.height - fillHeight + waveAmp)
                                 for (x in 0..size.width.toInt() step 4) {
@@ -240,7 +226,6 @@ fun DashboardScreen(
                                     )
                                 )
 
-                                // Gelombang atas (lebih terang)
                                 val path1 = androidx.compose.ui.graphics.Path()
                                 path1.moveTo(0f, size.height - fillHeight)
                                 for (x in 0..size.width.toInt() step 4) {
@@ -263,20 +248,19 @@ fun DashboardScreen(
                             }
                         }
 
-                        // Teks angka di tengah
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text  = "$currentIntake",
                                 style = MaterialTheme.typography.displayLarge.copy(
-                                    color      = DashNavy,
+                                    color      = colorScheme.onSurface,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize   = 56.sp
                                 )
                             )
                             Text(
-                                text  = "ML / ${targetIntake}ML",
+                                text  = "ML / ${dynamicTarget}ML",
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    color         = DashHint,
+                                    color         = colorScheme.onSurfaceVariant,
                                     letterSpacing = 1.sp,
                                     fontWeight    = FontWeight.SemiBold
                                 )
@@ -295,15 +279,15 @@ fun DashboardScreen(
                     .fillMaxWidth()
                     .height(60.dp),
                 shape     = RoundedCornerShape(50),
-                colors    = ButtonDefaults.buttonColors(containerColor = DashNavy),
+                colors    = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                 elevation = ButtonDefaults.buttonElevation(6.dp)
             ) {
-                Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                Icon(Icons.Rounded.Add, null, tint = colorScheme.onPrimary, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(
                     "Minum Sekarang",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color      = Color.White,
+                        color      = colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -315,80 +299,75 @@ fun DashboardScreen(
             Text(
                 "Aktivitas Hari Ini",
                 style = MaterialTheme.typography.titleLarge.copy(
-                    color      = DashNavy,
+                    color      = colorScheme.onBackground,
                     fontWeight = FontWeight.ExtraBold
                 )
             )
 
             Spacer(Modifier.height(14.dp))
 
-            // 2 card statistik
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Terakhir minum
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape    = RoundedCornerShape(18.dp),
-                    color    = DashCard,
-                    border   = BorderStroke(1.dp, Color(0xFFE8EEF4))
+                    color    = colorScheme.surface,
+                    border   = BorderStroke(1.dp, colorScheme.outlineVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Icon(
                             Icons.Rounded.Schedule, null,
-                            tint     = DashNavy,
+                            tint     = colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "TERAKHIR MINUM",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color         = DashHint,
+                                color         = colorScheme.onSurfaceVariant,
                                 letterSpacing = 0.5.sp,
                                 fontWeight    = FontWeight.SemiBold
                             )
                         )
                         Spacer(Modifier.height(4.dp))
-                        val now = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
                         Text(
-                            if (currentIntake > 0) now else "--:--",
+                            lastDrinkText,
                             style = MaterialTheme.typography.titleLarge.copy(
-                                color      = DashNavy,
+                                color      = colorScheme.onSurface,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         )
                     }
                 }
 
-                // Gelas hari ini
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape    = RoundedCornerShape(18.dp),
-                    color    = DashCard,
-                    border   = BorderStroke(1.dp, Color(0xFFE8EEF4))
+                    color    = colorScheme.surface,
+                    border   = BorderStroke(1.dp, colorScheme.outlineVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Icon(
                             Icons.Rounded.LocalDrink, null,
-                            tint     = DashNavy,
+                            tint     = colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "GELAS HARI INI",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color         = DashHint,
+                                color         = colorScheme.onSurfaceVariant,
                                 letterSpacing = 0.5.sp,
                                 fontWeight    = FontWeight.SemiBold
                             )
                         )
                         Spacer(Modifier.height(4.dp))
-                        val gelas = (currentIntake / 250).coerceAtLeast(0)
                         Text(
-                            "$gelas Gelas",
+                            "$gelasHariIni Gelas",
                             style = MaterialTheme.typography.titleLarge.copy(
-                                color      = DashNavy,
+                                color      = colorScheme.onSurface,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         )
@@ -399,14 +378,13 @@ fun DashboardScreen(
             Spacer(Modifier.height(12.dp))
 
             // ── TUJUAN MINGGUAN ───────────────────────────────────────────────
-            // Sekarang card ini bisa diklik untuk buka halaman WeeklyGoalScreen
             val weeklyProgress = (progress * 100).toInt().coerceAtMost(100)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigateToWeeklyGoal() },   // ← klik buka halaman detail
+                    .clickable { onNavigateToWeeklyGoal() },
                 shape    = RoundedCornerShape(18.dp),
-                color    = DashWeekly
+                color    = colorScheme.tertiaryContainer
             ) {
                 Row(
                     modifier          = Modifier.padding(16.dp),
@@ -415,12 +393,12 @@ fun DashboardScreen(
                     Box(
                         modifier         = Modifier
                             .size(44.dp)
-                            .background(Color.White, CircleShape),
+                            .background(colorScheme.surface, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Rounded.Star, null,
-                            tint     = DashNavy,
+                            tint     = colorScheme.onTertiaryContainer,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -429,16 +407,21 @@ fun DashboardScreen(
                         Text(
                             "Tujuan Mingguan",
                             style = MaterialTheme.typography.titleSmall.copy(
-                                color      = DashNavy,
+                                color      = colorScheme.onTertiaryContainer,
                                 fontWeight = FontWeight.Bold
                             )
                         )
                         Text(
                             "$weeklyProgress% Tercapai",
-                            style = MaterialTheme.typography.bodySmall.copy(color = DashHint)
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                            )
                         )
                     }
-                    Icon(Icons.Rounded.ChevronRight, null, tint = DashHint)
+                    Icon(
+                        Icons.Rounded.ChevronRight, null,
+                        tint = colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                    )
                 }
             }
 

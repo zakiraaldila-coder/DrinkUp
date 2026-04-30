@@ -4,9 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -20,14 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val TNavy   = Color(0xFF0D2D5E)
-private val TTeal   = Color(0xFF1A7A8A)
-private val TBg     = Color(0xFFF5F9FC)
-private val TCard   = Color(0xFFFFFFFF)
-private val THint   = Color(0xFF90A4AE)
-private val TBlue   = Color(0xFF4FC3F7)
-private val TField  = Color(0xFFF0F4F8)
-private val TBorder = Color(0xFFE0EEF5)
+// Warna aksen air tetap hardcoded (warna visual tombol pilihan)
+private val TBlue = Color(0xFF4FC3F7)
 
 data class WaterOption(
     val ml    : Int,
@@ -41,7 +36,9 @@ fun TambahScreen(
     onTambah   : (Int) -> Unit,
     onBatalkan : () -> Unit
 ) {
-    var selectedOption by rememberSaveable { mutableStateOf<Int?>(1) } // default 250ml
+    val colorScheme = MaterialTheme.colorScheme
+
+    var selectedOption by rememberSaveable { mutableStateOf<Int?>(1) }
     var customInput    by rememberSaveable { mutableStateOf("") }
 
     val options = listOf(
@@ -54,7 +51,8 @@ fun TambahScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TBg),
+            .verticalScroll(rememberScrollState())
+            .background(colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // ── Handle bar ────────────────────────────────────────────
@@ -64,7 +62,7 @@ fun TambahScreen(
                 .width(48.dp)
                 .height(4.dp)
                 .clip(RoundedCornerShape(50))
-                .background(TBorder)
+                .background(colorScheme.outlineVariant)
         )
 
         Spacer(Modifier.height(24.dp))
@@ -73,7 +71,7 @@ fun TambahScreen(
         Text(
             "Tambah Asupan Air",
             style = MaterialTheme.typography.headlineMedium.copy(
-                color      = TNavy,
+                color      = colorScheme.onBackground,
                 fontWeight = FontWeight.ExtraBold
             ),
             textAlign = TextAlign.Center
@@ -82,7 +80,7 @@ fun TambahScreen(
         Text(
             "Berikan tubuhmu hidrasi yang cukup hari ini.",
             style = MaterialTheme.typography.bodyMedium.copy(
-                color      = THint,
+                color      = colorScheme.onSurfaceVariant,
                 lineHeight = 22.sp
             ),
             textAlign = TextAlign.Center,
@@ -100,7 +98,7 @@ fun TambahScreen(
             Text(
                 "PILIHAN CEPAT",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color         = TTeal,
+                    color         = colorScheme.secondary,
                     fontWeight    = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
@@ -116,7 +114,7 @@ fun TambahScreen(
         ) {
             options.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEachIndexed { i, opt ->
+                    row.forEachIndexed { _, opt ->
                         val globalIdx = options.indexOf(opt)
                         val isSelected = selectedOption == globalIdx
                         Box(
@@ -124,12 +122,10 @@ fun TambahScreen(
                                 .weight(1f)
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(
-                                    if (isSelected) TBlue else TCard
-                                )
+                                .background(if (isSelected) TBlue else colorScheme.surface)
                                 .border(
                                     width = if (isSelected) 0.dp else 1.dp,
-                                    color = if (isSelected) Color.Transparent else TBorder,
+                                    color = if (isSelected) Color.Transparent else colorScheme.outlineVariant,
                                     shape = RoundedCornerShape(20.dp)
                                 )
                                 .clickable {
@@ -144,7 +140,7 @@ fun TambahScreen(
                                 Text(
                                     opt.label,
                                     style = MaterialTheme.typography.titleLarge.copy(
-                                        color      = if (isSelected) TNavy else TNavy,
+                                        color      = colorScheme.onSurface,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 )
@@ -152,7 +148,7 @@ fun TambahScreen(
                                 Text(
                                     opt.sub,
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color         = if (isSelected) TNavy.copy(alpha = 0.7f) else THint,
+                                        color         = if (isSelected) colorScheme.onSurface.copy(alpha = 0.7f) else colorScheme.onSurfaceVariant,
                                         letterSpacing = 0.5.sp,
                                         fontWeight    = FontWeight.SemiBold
                                     )
@@ -171,7 +167,7 @@ fun TambahScreen(
             Text(
                 "ATUR JUMLAH KUSTOM",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color         = TTeal,
+                    color         = colorScheme.secondary,
                     fontWeight    = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
@@ -187,14 +183,14 @@ fun TambahScreen(
                 placeholder   = {
                     Text(
                         "Contoh: 450",
-                        style = MaterialTheme.typography.bodyLarge.copy(color = THint)
+                        style = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurfaceVariant)
                     )
                 },
                 suffix        = {
                     Text(
                         "ML",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color      = TTeal,
+                            color      = colorScheme.secondary,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -204,14 +200,14 @@ fun TambahScreen(
                 shape         = RoundedCornerShape(16.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 colors        = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor      = TNavy.copy(alpha = 0.5f),
-                    unfocusedBorderColor    = TBorder,
-                    focusedContainerColor   = TField,
-                    unfocusedContainerColor = TField,
-                    cursorColor             = TNavy
+                    focusedBorderColor      = colorScheme.primary.copy(alpha = 0.5f),
+                    unfocusedBorderColor    = colorScheme.outlineVariant,
+                    focusedContainerColor   = colorScheme.surfaceVariant,
+                    unfocusedContainerColor = colorScheme.surfaceVariant,
+                    cursorColor             = colorScheme.primary
                 ),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color      = TNavy,
+                    color      = colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
             )
@@ -238,13 +234,13 @@ fun TambahScreen(
                 },
                 modifier  = Modifier.fillMaxWidth().height(58.dp),
                 shape     = RoundedCornerShape(50),
-                colors    = ButtonDefaults.buttonColors(containerColor = TNavy),
+                colors    = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                 elevation = ButtonDefaults.buttonElevation(4.dp)
             ) {
                 Text(
                     "＋  Simpan",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color      = Color.White,
+                        color      = colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -256,7 +252,7 @@ fun TambahScreen(
                 Text(
                     "BATALKAN",
                     style = MaterialTheme.typography.labelLarge.copy(
-                        color         = TNavy,
+                        color         = colorScheme.onSurfaceVariant,
                         fontWeight    = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )

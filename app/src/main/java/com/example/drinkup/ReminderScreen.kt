@@ -23,7 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -32,24 +31,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 
-// ── Color Palette ──────────────────────────────────────────────────────────────
-private val NavyDark      = Color(0xFF0D1B4B)
-private val NavyMid       = Color(0xFF1A2F6B)
-private val TealAccent    = Color(0xFF00BFA5)
-private val TealLight     = Color(0xFFB2EBF2)
-private val BgGray        = Color(0xFFF2F4F8)
-private val CardWhite     = Color(0xFFFFFFFF)
-private val TextPrimary   = Color(0xFF0D1B4B)
-private val TextSecondary = Color(0xFF8A94A6)
+// Warna hari chip aktif tetap hardcoded (warna aksen visual)
 private val DayChipActive = Color(0xFF26C6DA)
 
-// ── Models ─────────────────────────────────────────────────────────────────────
 data class ReminderItem(
     val id: Int,
     val label: String,
     val hour: Int,
     val minute: Int,
-    val days: List<String>,     // e.g. ["MON","WED","FRI"] or ["EVERYDAY"]
+    val days: List<String>,
     val intervalMillis: Long,
     val isActive: Boolean,
     val icon: String
@@ -57,12 +47,11 @@ data class ReminderItem(
 
 enum class TimeUnit { MENIT, JAM }
 
-// ── Main Screen ────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderScreen() {
+    val colorScheme = MaterialTheme.colorScheme
     val context = LocalContext.current
-    val prefs   = context.getSharedPreferences("drinkup_prefs", Context.MODE_PRIVATE)
 
     var reminders by remember {
         mutableStateOf(
@@ -119,7 +108,7 @@ fun ReminderScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgGray)
+            .background(colorScheme.background)
     ) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
@@ -133,13 +122,13 @@ fun ReminderScreen() {
                         text       = "Reminders",
                         fontSize   = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color      = TextPrimary
+                        color      = colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text     = "Keep your hydration flowing throughout the day.",
                         fontSize = 14.sp,
-                        color    = TextSecondary
+                        color    = colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.height(20.dp))
@@ -155,8 +144,8 @@ fun ReminderScreen() {
                         .height(54.dp),
                     shape  = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = NavyDark,
-                        contentColor   = Color.White
+                        containerColor = colorScheme.primary,
+                        contentColor   = colorScheme.onPrimary
                     )
                 ) {
                     Icon(
@@ -226,12 +215,12 @@ fun ReminderScreen() {
                             Text(
                                 "Belum ada reminder",
                                 fontWeight = FontWeight.SemiBold,
-                                color      = TextSecondary,
+                                color      = colorScheme.onSurfaceVariant,
                                 fontSize   = 15.sp
                             )
                             Text(
                                 "Klik + Tambah Reminder untuk membuat baru",
-                                color    = TextSecondary,
+                                color    = colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
                         }
@@ -254,10 +243,9 @@ fun ReminderScreen() {
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
                     shape  = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFD6EEF8))
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.tertiaryContainer)
                 ) {
                     Box {
-                        // Decorative large drop icon
                         Text(
                             text     = "💧",
                             fontSize = 72.sp,
@@ -272,13 +260,13 @@ fun ReminderScreen() {
                                 text       = "Smart Reminders",
                                 fontSize   = 16.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color      = TextPrimary
+                                color      = colorScheme.onTertiaryContainer
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text     = "We'll space out your alerts based on your daily goal and waking hours for optimal cellular hydration.",
                                 fontSize = 13.sp,
-                                color    = TextSecondary,
+                                color    = colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
                                 lineHeight = 20.sp,
                                 modifier = Modifier.fillMaxWidth(0.72f)
                             )
@@ -303,9 +291,9 @@ fun ReminderScreen() {
     }
 }
 
-// ── Reminder Card ──────────────────────────────────────────────────────────────
 @Composable
 fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
     val timeStr = String.format("%02d:%02d", item.hour, item.minute)
 
     Card(
@@ -314,7 +302,7 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
             .padding(horizontal = 20.dp, vertical = 6.dp),
         shape  = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.isActive) CardWhite else Color(0xFFF5F6FA)
+            containerColor = if (item.isActive) colorScheme.surface else colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -328,29 +316,28 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
                     text       = timeStr,
                     fontSize   = 36.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color      = if (item.isActive) TextPrimary else TextSecondary
+                    color      = if (item.isActive) colorScheme.onSurface else colorScheme.onSurfaceVariant
                 )
                 Switch(
                     checked         = item.isActive,
                     onCheckedChange = onToggle,
                     colors          = SwitchDefaults.colors(
                         checkedThumbColor       = Color.White,
-                        checkedTrackColor       = TealAccent,
+                        checkedTrackColor       = colorScheme.secondary,
                         uncheckedThumbColor     = Color.White,
-                        uncheckedTrackColor     = Color(0xFFCDD3DC)
+                        uncheckedTrackColor     = colorScheme.outline
                     )
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            // Day chips
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 item.days.forEach { day ->
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(
-                                if (item.isActive) DayChipActive.copy(alpha = 0.18f)
-                                else Color(0xFFE8EAF0)
+                                if (item.isActive) colorScheme.secondary.copy(alpha = 0.18f)
+                                else colorScheme.surfaceVariant
                             )
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
@@ -358,7 +345,7 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
                             text       = day,
                             fontSize   = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color      = if (item.isActive) NavyMid else TextSecondary
+                            color      = if (item.isActive) colorScheme.primary else colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -367,7 +354,6 @@ fun ReminderCard(item: ReminderItem, onToggle: (Boolean) -> Unit) {
     }
 }
 
-// ── Add Reminder Bottom Sheet ──────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddReminderSheet(
@@ -375,6 +361,8 @@ fun AddReminderSheet(
     onDismiss: () -> Unit,
     onSave: (hour: Int, minute: Int, label: String, days: List<String>, millis: Long) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     var selectedHour   by remember { mutableStateOf(7) }
     var selectedMinute by remember { mutableStateOf(30) }
     var isAm           by remember { mutableStateOf(true) }
@@ -389,7 +377,7 @@ fun AddReminderSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState       = sheetState,
-        containerColor   = CardWhite,
+        containerColor   = colorScheme.surface,
         shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle       = null
     ) {
@@ -407,20 +395,16 @@ fun AddReminderSheet(
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.Filled.ArrowBack,
-                        contentDescription = "Kembali",
-                        tint               = TextPrimary
-                    )
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = colorScheme.onSurface)
                 }
                 Text(
                     text       = "Tambah Reminder",
                     fontSize   = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color      = TextPrimary
+                    color      = colorScheme.onSurface
                 )
                 IconButton(onClick = {}) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = null, tint = TextPrimary)
+                    Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colorScheme.onSurface)
                 }
             }
 
@@ -431,34 +415,32 @@ fun AddReminderSheet(
                     .padding(top = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Circular arc background
                 Box(
                     modifier         = Modifier
                         .size(240.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF0F4FA)),
+                        .background(colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        // Hour picker
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             IconButton(onClick = { selectedHour = (selectedHour % 12) + 1 }) {
-                                Text("▲", fontSize = 16.sp, color = TextSecondary)
+                                Text("▲", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
                             }
                             Text(
                                 text       = String.format("%02d", selectedHour),
                                 fontSize   = 52.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color      = NavyDark
+                                color      = colorScheme.onSurface
                             )
-                            Text("JAM", fontSize = 11.sp, color = TextSecondary, letterSpacing = 1.sp)
+                            Text("JAM", fontSize = 11.sp, color = colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
                             IconButton(onClick = {
                                 selectedHour = if (selectedHour == 1) 12 else selectedHour - 1
                             }) {
-                                Text("▼", fontSize = 16.sp, color = TextSecondary)
+                                Text("▼", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
                             }
                         }
 
@@ -466,30 +448,28 @@ fun AddReminderSheet(
                             ":",
                             fontSize   = 48.sp,
                             fontWeight = FontWeight.Bold,
-                            color      = NavyDark,
+                            color      = colorScheme.onSurface,
                             modifier   = Modifier.padding(horizontal = 4.dp)
                         )
 
-                        // Minute picker
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             IconButton(onClick = { selectedMinute = (selectedMinute + 1) % 60 }) {
-                                Text("▲", fontSize = 16.sp, color = TextSecondary)
+                                Text("▲", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
                             }
                             Text(
                                 text       = String.format("%02d", selectedMinute),
                                 fontSize   = 52.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color      = NavyDark
+                                color      = colorScheme.onSurface
                             )
-                            Text("MENIT", fontSize = 11.sp, color = TextSecondary, letterSpacing = 1.sp)
+                            Text("MENIT", fontSize = 11.sp, color = colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
                             IconButton(onClick = {
                                 selectedMinute = if (selectedMinute == 0) 59 else selectedMinute - 1
                             }) {
-                                Text("▼", fontSize = 16.sp, color = TextSecondary)
+                                Text("▼", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
                             }
                         }
 
-                        // AM/PM
                         Column(
                             modifier = Modifier.padding(start = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -497,7 +477,7 @@ fun AddReminderSheet(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isAm) NavyDark else Color(0xFFE8EAF0))
+                                    .background(if (isAm) colorScheme.primary else colorScheme.surfaceVariant)
                                     .clickable { isAm = true }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -505,14 +485,14 @@ fun AddReminderSheet(
                                     "AM",
                                     fontSize   = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color      = if (isAm) Color.White else TextSecondary
+                                    color      = if (isAm) colorScheme.onPrimary else colorScheme.onSurfaceVariant
                                 )
                             }
                             Spacer(Modifier.height(6.dp))
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (!isAm) NavyDark else Color(0xFFE8EAF0))
+                                    .background(if (!isAm) colorScheme.primary else colorScheme.surfaceVariant)
                                     .clickable { isAm = false }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -520,7 +500,7 @@ fun AddReminderSheet(
                                     "PM",
                                     fontSize   = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color      = if (!isAm) Color.White else TextSecondary
+                                    color      = if (!isAm) colorScheme.onPrimary else colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -528,7 +508,6 @@ fun AddReminderSheet(
                 }
             }
 
-            // Hint text
             Row(
                 modifier          = Modifier
                     .fillMaxWidth()
@@ -538,7 +517,7 @@ fun AddReminderSheet(
             ) {
                 Text("🕐", fontSize = 14.sp)
                 Spacer(Modifier.width(6.dp))
-                Text("Geser untuk menyesuaikan waktu", fontSize = 12.sp, color = TextSecondary)
+                Text("Geser untuk menyesuaikan waktu", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -550,7 +529,7 @@ fun AddReminderSheet(
                     text          = "NAMA PENGINGAT",
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.SemiBold,
-                    color         = TextSecondary,
+                    color         = colorScheme.onSurfaceVariant,
                     letterSpacing = 1.sp
                 )
                 Spacer(Modifier.height(8.dp))
@@ -559,11 +538,11 @@ fun AddReminderSheet(
                     onValueChange = { reminderLabel = it },
                     modifier      = Modifier.fillMaxWidth(),
                     shape         = RoundedCornerShape(20.dp),
-                    placeholder   = { Text("Minum Pagi", color = TextSecondary) },
-                    leadingIcon   = { Text("❯", fontSize = 16.sp, color = TealAccent) },
+                    placeholder   = { Text("Minum Pagi", color = colorScheme.onSurfaceVariant) },
+                    leadingIcon   = { Text("❯", fontSize = 16.sp, color = colorScheme.secondary) },
                     colors        = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor   = TealAccent,
-                        unfocusedBorderColor = Color(0xFFE0E4ED)
+                        focusedBorderColor   = colorScheme.secondary,
+                        unfocusedBorderColor = colorScheme.outline
                     ),
                     singleLine    = true
                 )
@@ -580,13 +559,13 @@ fun AddReminderSheet(
                         text          = "ULANGI SETIAP HARI",
                         fontSize      = 11.sp,
                         fontWeight    = FontWeight.SemiBold,
-                        color         = TextSecondary,
+                        color         = colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
                     )
                     Text(
                         text     = "Pilih Semua",
                         fontSize = 13.sp,
-                        color    = TealAccent,
+                        color    = colorScheme.secondary,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.clickable {
                             selectedDays = if (selectedDays.size == 7) emptySet()
@@ -606,7 +585,7 @@ fun AddReminderSheet(
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(CircleShape)
-                                .background(if (isSelected) DayChipActive else Color(0xFFE8EAF0))
+                                .background(if (isSelected) DayChipActive else colorScheme.surfaceVariant)
                                 .clickable {
                                     selectedDays = if (isSelected)
                                         selectedDays - key else selectedDays + key
@@ -617,7 +596,7 @@ fun AddReminderSheet(
                                 text       = dayLabel,
                                 fontSize   = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color      = if (isSelected) Color.White else TextSecondary
+                                color      = if (isSelected) Color.White else colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -630,7 +609,7 @@ fun AddReminderSheet(
                     text          = "BUNYI NOTIFIKASI",
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.SemiBold,
-                    color         = TextSecondary,
+                    color         = colorScheme.onSurfaceVariant,
                     letterSpacing = 1.sp
                 )
                 Spacer(Modifier.height(12.dp))
@@ -638,7 +617,6 @@ fun AddReminderSheet(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Flowing Stream
                     SoundOption(
                         modifier    = Modifier.weight(1f),
                         icon        = "〰️",
@@ -647,7 +625,6 @@ fun AddReminderSheet(
                         isSelected  = selectedSound == "flowing",
                         onClick     = { selectedSound = "flowing" }
                     )
-                    // Gentle Drop
                     SoundOption(
                         modifier    = Modifier.weight(1f),
                         icon        = "🔔",
@@ -664,7 +641,7 @@ fun AddReminderSheet(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape    = RoundedCornerShape(16.dp),
-                    colors   = CardDefaults.cardColors(containerColor = Color(0xFFF5F6FA)),
+                    colors   = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Row(
@@ -677,22 +654,22 @@ fun AddReminderSheet(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(NavyDark),
+                                .background(colorScheme.primary),
                             contentAlignment = Alignment.Center
                         ) { Text("📳", fontSize = 20.sp) }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Getaran", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextPrimary)
-                            Text("Aktifkan getaran saat alarm berbunyi", fontSize = 12.sp, color = TextSecondary)
+                            Text("Getaran", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = colorScheme.onSurface)
+                            Text("Aktifkan getaran saat alarm berbunyi", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
                         }
                         Switch(
                             checked         = vibrationOn,
                             onCheckedChange = { vibrationOn = it },
                             colors          = SwitchDefaults.colors(
                                 checkedThumbColor   = Color.White,
-                                checkedTrackColor   = TealAccent,
+                                checkedTrackColor   = colorScheme.secondary,
                                 uncheckedThumbColor = Color.White,
-                                uncheckedTrackColor = Color(0xFFCDD3DC)
+                                uncheckedTrackColor = colorScheme.outline
                             )
                         )
                     }
@@ -715,8 +692,8 @@ fun AddReminderSheet(
                         .height(56.dp),
                     shape  = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = NavyDark,
-                        contentColor   = Color.White
+                        containerColor = colorScheme.primary,
+                        contentColor   = colorScheme.onPrimary
                     )
                 ) {
                     Text("✓", fontSize = 18.sp)
@@ -734,7 +711,6 @@ fun AddReminderSheet(
     }
 }
 
-// ── Sound Option Card ──────────────────────────────────────────────────────────
 @Composable
 fun SoundOption(
     modifier: Modifier,
@@ -744,11 +720,12 @@ fun SoundOption(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Card(
         modifier = modifier.clickable(onClick = onClick),
         shape    = RoundedCornerShape(16.dp),
         colors   = CardDefaults.cardColors(
-            containerColor = if (isSelected) TealLight else Color(0xFFF5F6FA)
+            containerColor = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(0.dp),
         border    = if (isSelected) BorderStroke(0.dp, Color.Transparent) else null
@@ -757,8 +734,8 @@ fun SoundOption(
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(icon, fontSize = 24.sp)
                 Spacer(Modifier.height(8.dp))
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
-                Text(subtitle, fontSize = 11.sp, color = TextSecondary)
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = colorScheme.onSurface)
+                Text(subtitle, fontSize = 11.sp, color = colorScheme.onSurfaceVariant)
             }
             if (isSelected) {
                 Box(
@@ -767,10 +744,10 @@ fun SoundOption(
                         .padding(10.dp)
                         .size(20.dp)
                         .clip(CircleShape)
-                        .background(NavyDark),
+                        .background(colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("✓", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("✓", fontSize = 11.sp, color = colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                 }
             }
         }

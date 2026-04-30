@@ -52,12 +52,15 @@ private enum class AuthTab { SIGN_IN, REGISTER }
 @Composable
 fun LoginScreen(
     authViewModel    : AuthViewModel,
+    initialTab       : String = "login",
     onLoginSuccess   : () -> Unit = {},
     onRegisterSuccess: () -> Unit = {},
     onGoogleNewUser  : () -> Unit = {},
     onGoogleOldUser  : () -> Unit = {}
 ) {
-    var activeTab by remember { mutableStateOf(AuthTab.SIGN_IN) }
+    var activeTab by remember {
+        mutableStateOf(if (initialTab == "register") AuthTab.REGISTER else AuthTab.SIGN_IN)
+    }
 
     // Background gradien seperti referensi (biru muda ke putih)
     Box(

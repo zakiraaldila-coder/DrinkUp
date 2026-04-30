@@ -9,6 +9,9 @@ import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class UserData(
     val uid         : String = "",
@@ -25,6 +28,32 @@ class AuthViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db   = FirebaseFirestore.getInstance()
 
+
+    // ── StateFlow user data (realtime dari Firestore) ─────────────────────────
+    private val _userData = MutableStateFlow(UserData())
+    val userData: StateFlow<UserData> = _userData.asStateFlow()
+
+    init {
+        val uid = auth.currentUser?.uid
+        if (uid != null) startListeningUser(uid)
+    }
+
+    fun startListeningUser(uid: String) {
+        db.collection("users").document(uid)
+            .addSnapshotListener { doc, _ ->
+                if (doc != null && doc.exists()) {
+                    _userData.value = UserData(
+                        uid         = doc.getString("uid") ?: uid,
+                        namaLengkap = doc.getString("namaLengkap") ?: "",
+                        email       = doc.getString("email") ?: "",
+                        photoUrl    = doc.getString("photoUrl") ?: "",
+                        beratBadan  = doc.getLong("beratBadan")?.toInt() ?: 0,
+                        gender      = doc.getString("gender") ?: ""
+                    )
+                }
+            }
+    }
+
     // ── Cek login ────────────────────────────────────────────────────────────
     fun isLoggedIn() = auth.currentUser != null
 
@@ -40,28 +69,66 @@ class AuthViewModel : ViewModel() {
         onError            : (String) -> Unit
     ) {
         when {
-            namaLengkap.isBlank()      -> { onError("Nama tidak boleh kosong"); return }
-            email.isBlank()            -> { onError("Email tidak boleh kosong"); return }
-            password.length < 6        -> { onError("Password minimal 6 karakter"); return }
-            password != konfirmasiPassword -> { onError("Password tidak sama"); return }
-            gender.isEmpty()           -> { onError("Pilih jenis kelamin dulu"); return }
+            namaLengkap.isBlank() -> {
+                onError("Nama tidak boleh kosong"); return
+            }
+
+            email.isBlank() -> {
+                onError("Email tidak boleh kosong"); return
+            }
+
+            password.length < 6 -> {
+                onError("Password minimal 6 karakter"); return
+            }
+
+            password != konfirmasiPassword -> {
+                onError("Password tidak sama"); return
+            }
+
+            gender.isEmpty() -> {
+                onError("Pilih jenis kelamin dulu"); return
+            }
         }
 
         auth.createUserWithEmailAndPassword(email.trim(), password)
             .addOnSuccessListener { result ->
-                val user = result.user ?: return@addOnSuccessListener
-                val userData = UserData(
-                    uid         = user.uid,
-                    namaLengkap = namaLengkap.trim(),
-                    email       = email.trim(),
-                    gender      = gender,
-                    beratBadan  = beratBadan
+
+                val user = result.user
+                if (user == null) {
+                    onError("User gagal dibuat")
+                    return@addOnSuccessListener
+                }
+
+                val kebutuhanAir = beratBadan * 35
+
+                val userData = hashMapOf(
+                    "uid" to user.uid,
+                    "namaLengkap" to namaLengkap.trim(),
+                    "email" to email.trim(),
+                    "gender" to gender,
+                    "beratBadan" to beratBadan,
+                    "kebutuhanAir" to kebutuhanAir,
+                    "createdAt" to System.currentTimeMillis()
                 )
-                db.collection("users").document(user.uid).set(userData)
-                    .addOnSuccessListener { onSuccess() }
-                    .addOnFailureListener { onError(it.message ?: "Gagal simpan data") }
+
+                db.collection("users")
+                    .document(user.uid)
+                    .set(userData)
+                    .addOnSuccessListener {
+
+                        auth.signOut()
+
+                        onSuccess()
+                    }
+                    .addOnFailureListener {
+
+                        onError("Gagal menyimpan data ke database")
+                    }
+
             }
-            .addOnFailureListener { onError(mapError(it.message)) }
+            .addOnFailureListener {
+                onError(mapError(it.message))
+            }
     }
 
     // ── Google Sign-In Step 1: buat intent ───────────────────────────────────
@@ -105,17 +172,18 @@ class AuthViewModel : ViewModel() {
                             gender      = ""
                         )
                         db.collection("users").document(user.uid).set(userData)
-                            .addOnSuccessListener { onNewUser() }   // → ke CompleteProfile
+                            .addOnSuccessListener { startListeningUser(user.uid); onNewUser() }   // → ke CompleteProfile
                             .addOnFailureListener { onError(it.message ?: "Error") }
                     } else {
                         // User lama — cek apakah gender sudah diisi
                         db.collection("users").document(user.uid).get()
                             .addOnSuccessListener { doc ->
                                 val gender = doc.getString("gender") ?: ""
+                                startListeningUser(user.uid)
                                 if (gender.isEmpty()) onNewUser()   // belum lengkap → CompleteProfile
                                 else onOldUser()                    // sudah lengkap → Dashboard
                             }
-                            .addOnFailureListener { onOldUser() }   // fallback langsung masuk
+                            .addOnFailureListener { startListeningUser(user.uid); onOldUser() }   // fallback langsung masuk
                     }
                 }
                 .addOnFailureListener { onError(mapError(it.message)) }
@@ -153,6 +221,7 @@ class AuthViewModel : ViewModel() {
         msg.contains("badly formatted")          -> "Format email tidak valid"
         msg.contains("network error")            -> "Tidak ada koneksi internet"
         msg.contains("too-many-requests")        -> "Terlalu banyak percobaan, coba lagi nanti"
+        msg.contains("supplied auth credential") -> "Email atau password salah"
         else                                     -> msg
     }
 }

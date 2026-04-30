@@ -18,35 +18,23 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── Color palette ──────────────────────────────────────────────────────────────
-private val NavyDark   = Color(0xFF0D1B4B)
-private val NavyMid    = Color(0xFF1A2F6B)
-private val TealAccent = Color(0xFF00BFA5)
-private val BgGray     = Color(0xFFF2F4F8)
-private val CardWhite  = Color(0xFFFFFFFF)
-private val TextPrimary   = Color(0xFF0D1B4B)
-private val TextSecondary = Color(0xFF8A94A6)
-private val BarReached    = Color(0xFF1A2F6B)
-private val BarPartial    = Color(0xFFB8C5E0)
-
-// ── Main Screen ────────────────────────────────────────────────────────────────
 @Composable
 fun StatistikScreen(
     history: Map<String, Int>,
     targetIntake: Int
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val todayMl   = history.values.lastOrNull() ?: 0
     val avgMl     = if (history.isNotEmpty()) history.values.average().toInt() else 0
     val recordMl  = history.values.maxOrNull() ?: 0
     val totalWeek = history.values.sum()
 
-    val todayL  = todayMl  / 1000.0
     val avgL    = avgMl    / 1000.0
     val recordL = recordMl / 1000.0
     val totalL  = totalWeek / 1000.0
@@ -54,7 +42,7 @@ fun StatistikScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgGray)
+            .background(colorScheme.background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -68,13 +56,13 @@ fun StatistikScreen(
                         text = "Statistik Mingguan",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary
+                        color = colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Lacak hidrasi Anda sepanjang minggu.",
                         fontSize = 14.sp,
-                        color = TextSecondary
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.height(20.dp))
@@ -104,14 +92,14 @@ fun StatistikScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // ── Rekor terbaik (dark navy card) ───────────────────────────────
+            // ── Rekor terbaik (dark primary card) ──────────────────────────
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = NavyDark),
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.primaryContainer),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
@@ -127,7 +115,7 @@ fun StatistikScreen(
                                 text = "REKOR TERBAIK",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFB8C5E0),
+                                color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                                 letterSpacing = 1.sp
                             )
                         }
@@ -136,7 +124,7 @@ fun StatistikScreen(
                             text = "${String.format("%.1f", recordL)} L",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = colorScheme.onPrimaryContainer
                         )
                     }
                 }
@@ -159,11 +147,9 @@ fun StatistikScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-
     }
 }
 
-// ── Small stat card (white) ────────────────────────────────────────────────────
 @Composable
 fun SmallStatCard(
     modifier: Modifier = Modifier,
@@ -171,10 +157,11 @@ fun SmallStatCard(
     label: String,
     value: String
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -184,7 +171,7 @@ fun SmallStatCard(
                 text = label,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextSecondary,
+                color = colorScheme.onSurfaceVariant,
                 letterSpacing = 0.5.sp
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -192,32 +179,34 @@ fun SmallStatCard(
                 text = value,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = TextPrimary
+                color = colorScheme.onSurface
             )
         }
     }
 }
 
-// ── Hydration chart card ───────────────────────────────────────────────────────
 @Composable
 fun HydrationChartCard(
     history: Map<String, Int>,
     targetIntake: Int,
     totalL: Double
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val sorted = history.toSortedMap().toList()
     val max    = maxOf(history.values.maxOrNull() ?: 1, targetIntake).toFloat()
+
+    val barReached = colorScheme.primary
+    val barPartial = colorScheme.surfaceVariant
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -228,12 +217,12 @@ fun HydrationChartCard(
                         text = "Aktivitas Hidrasi",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colorScheme.onSurface
                     )
                     Text(
                         text = "7 hari terakhir",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -241,14 +230,14 @@ fun HydrationChartCard(
                         text = "TOTAL MINGGU INI",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary,
+                        color = colorScheme.onSurfaceVariant,
                         letterSpacing = 0.5.sp
                     )
                     Text(
                         text = "${String.format("%.1f", totalL)} L",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary
+                        color = colorScheme.onSurface
                     )
                 }
             }
@@ -262,21 +251,21 @@ fun HydrationChartCard(
                         .height(140.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Belum ada data 😢", color = TextSecondary, fontSize = 14.sp)
+                    Text("Belum ada data 😢", color = colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 }
             } else {
                 val targetFraction = targetIntake / max
+                val dashColor = colorScheme.outline
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
                 ) {
-                    // Dashed target line (drawn on Canvas)
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val yTarget = size.height * (1f - targetFraction)
                         drawLine(
-                            color = Color(0xFFCBD5E0),
+                            color = dashColor,
                             start = Offset(0f, yTarget),
                             end = Offset(size.width, yTarget),
                             strokeWidth = 1.5.dp.toPx(),
@@ -284,7 +273,6 @@ fun HydrationChartCard(
                             cap = StrokeCap.Round
                         )
                     }
-                    // Target label
                     val targetFractionForLabel = targetIntake / max
                     Box(
                         modifier = Modifier
@@ -294,7 +282,7 @@ fun HydrationChartCard(
                         Text(
                             text = "TARGET (${String.format("%.1f", targetIntake / 1000.0)}L)",
                             fontSize = 9.sp,
-                            color = TextSecondary,
+                            color = colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(
@@ -303,7 +291,6 @@ fun HydrationChartCard(
                         )
                     }
 
-                    // Bars
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
@@ -318,7 +305,7 @@ fun HydrationChartCard(
                                 animationSpec = tween(durationMillis = 700 + index * 80),
                                 label = "bar_$index"
                             )
-                            val barColor = if (value >= targetIntake) BarReached else BarPartial
+                            val barColor = if (value >= targetIntake) barReached else barPartial
 
                             Box(
                                 modifier = Modifier
@@ -333,21 +320,18 @@ fun HydrationChartCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Day labels
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     val days = listOf("SEN", "SEL", "RAB", "KAM", "JUM", "SAB", "MIN")
-                    val usedDays = if (sorted.size <= 7) {
-                        days.takeLast(sorted.size)
-                    } else days
+                    val usedDays = if (sorted.size <= 7) days.takeLast(sorted.size) else days
 
                     sorted.forEachIndexed { index, _ ->
                         Text(
                             text = usedDays.getOrElse(index) { "..." },
                             fontSize = 10.sp,
-                            color = TextSecondary,
+                            color = colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center
@@ -359,19 +343,18 @@ fun HydrationChartCard(
     }
 }
 
-// ── Health Tips card ───────────────────────────────────────────────────────────
 @Composable
 fun HealthTipsCard() {
+    val colorScheme = MaterialTheme.colorScheme
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column {
-            // Image placeholder banner
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -388,18 +371,17 @@ fun HealthTipsCard() {
             }
 
             Column(modifier = Modifier.padding(20.dp)) {
-                // Tag
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFFE8F5E9))
+                        .background(colorScheme.secondaryContainer)
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "HEALTH TIPS",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TealAccent,
+                        color = colorScheme.onSecondaryContainer,
                         letterSpacing = 0.8.sp
                     )
                 }
@@ -408,13 +390,13 @@ fun HealthTipsCard() {
                     text = "Pentingnya Air Saat Pagi",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary
+                    color = colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Memulai hari dengan segelas air hangat dapat membantu mengaktifkan organ internal dan membuang racun sebelum Anda mengonsumsi makanan pertama.",
                     fontSize = 13.sp,
-                    color = TextSecondary,
+                    color = colorScheme.onSurfaceVariant,
                     lineHeight = 20.sp
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -422,7 +404,7 @@ fun HealthTipsCard() {
                     text = "Baca Selengkapnya →",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NavyDark
+                    color = colorScheme.primary
                 )
             }
         }

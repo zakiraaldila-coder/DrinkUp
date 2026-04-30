@@ -35,6 +35,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 
 private val MintPrimary = Color(0xFF4ECDC4)
 private val MintBg      = Color(0xFFF0FAFA)
@@ -45,6 +47,7 @@ object Routes {
     const val SPLASH       = "splash"
     const val WELCOME      = "welcome"
     const val LOGIN        = "login"
+    const val REGISTER = "register"
     const val DASHBOARD    = "dashboard"
     const val STATISTIK    = "statistik"
     const val REMINDER     = "reminder"
@@ -52,6 +55,7 @@ object Routes {
     const val EDIT_PROFILE = "edit_profile"
     const val WEEKLY_GOAL      = "weekly_goal"
     const val COMPLETE_PROFILE = "complete_profile"
+    const val TAMBAH = "tambah"
 }
 
 data class NavItem(val route: String, val icon: ImageVector, val label: String)
@@ -72,22 +76,35 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         createNotificationChannel()
-        setContent { DrinkUpTheme { DrinkUpApp(authViewModel) } }
+        setContent {
+            val themeViewModel: ThemeViewModel = viewModel()
+
+            DrinkUpTheme(
+                darkTheme = themeViewModel.isDarkMode
+            ) {
+                DrinkUpApp(
+                    authViewModel,
+                    themeViewModel
+                )
+            }
+        }
     }
 }
 
 @Composable
-fun DrinkUpApp(authViewModel: AuthViewModel) {
+fun DrinkUpApp(
+    authViewModel: AuthViewModel,
+    themeViewModel: ThemeViewModel
+) {
     val navController    = rememberNavController()
     var currentRoute     by remember { mutableStateOf(Routes.DASHBOARD) }
     var showNavBar       by remember { mutableStateOf(false) }
-    var currentIntake    by remember { mutableStateOf(0) }
-    val targetIntake     = 2000
-    var streak           by remember { mutableStateOf(0) }
-    val history          = remember { mutableStateMapOf<String, Int>() }
-    var showTambahScreen by remember { mutableStateOf(false) }
+    val intakeViewModel  : IntakeViewModel = viewModel()
+
+    // Flag: splash sudah selesai baru boleh cek auth state untuk redirect
+    var splashDone by remember { mutableStateOf(false) }
 
     // Reactive — terpicu saat logout/login/session expired
     var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
@@ -100,13 +117,6 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
         onDispose { FirebaseAuth.getInstance().removeAuthStateListener(listener) }
     }
 
-    LaunchedEffect(isLoggedIn) {
-        if (!isLoggedIn) {
-            showNavBar   = false
-            currentRoute = Routes.WELCOME
-            navController.navigate(Routes.WELCOME) { popUpTo(0) { inclusive = true } }
-        }
-    }
 
     val navItems = listOf(
         NavItem(Routes.DASHBOARD, Icons.Rounded.Home,          "Home"),
@@ -118,6 +128,8 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
     fun goToDashboard() {
         showNavBar   = true
         currentRoute = Routes.DASHBOARD
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null) authViewModel.startListeningUser(uid)
         navController.navigate(Routes.DASHBOARD) { popUpTo(0) { inclusive = true } }
     }
 
@@ -128,7 +140,7 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
     }
 
     Scaffold(
-        containerColor = MintBg,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showNavBar) {
                 DrinkUpNavBar(
@@ -139,6 +151,7 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
             }
         }
     ) { innerPadding ->
+
         NavHost(
             navController    = navController,
             startDestination = Routes.SPLASH,
@@ -147,12 +160,22 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
             composable(Routes.SPLASH) {
                 showNavBar = false
                 SplashScreen {
+                    splashDone = true
                     val user = FirebaseAuth.getInstance().currentUser
                     if (user != null) {
+                        authViewModel.startListeningUser(user.uid)
                         showNavBar = true
-                        navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                        navController.navigate(Routes.DASHBOARD) {
+                            popUpTo(Routes.SPLASH) {
+                                inclusive = true
+                            }
+                        }
                     } else {
-                        navController.navigate(Routes.WELCOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                        navController.navigate(Routes.WELCOME) {
+                            popUpTo(Routes.SPLASH) {
+                                inclusive = true
+                            }
+                        }
                     }
                 }
             }
@@ -161,69 +184,73 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
                 showNavBar = false
                 WelcomeScreen(
                     onLoginClick    = { navController.navigate(Routes.LOGIN) },
-                    onRegisterClick = { navController.navigate(Routes.LOGIN) }
+                    onRegisterClick = { navController.navigate(Routes.REGISTER) }
                 )
             }
 
-            // LOGIN = Sign In + Register dalam 1 screen dengan tab switcher
+            // LOGIN = tab Sign In
             composable(Routes.LOGIN) {
                 showNavBar = false
                 LoginScreen(
                     authViewModel     = authViewModel,
+                    initialTab        = "login",
                     onLoginSuccess    = { goToDashboard() },
-                    onRegisterSuccess = { goToDashboard() },
+                    onRegisterSuccess = { navController.navigate(Routes.LOGIN) },
+                    onGoogleNewUser   = { goToCompleteProfile() },
+                    onGoogleOldUser   = { goToDashboard() }
+                )
+            }
+
+            // REGISTER = LoginScreen dengan tab Register aktif
+            composable(Routes.REGISTER) {
+                showNavBar = false
+                LoginScreen(
+                    authViewModel     = authViewModel,
+                    initialTab        = "register",
+                    onLoginSuccess    = { goToDashboard() },
+                    onRegisterSuccess = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(Routes.REGISTER) { inclusive = true }
+                        }
+                    },
                     onGoogleNewUser   = { goToCompleteProfile() },
                     onGoogleOldUser   = { goToDashboard() }
                 )
             }
 
             composable(Routes.DASHBOARD) {
-                showNavBar   = true
+                showNavBar = true
                 currentRoute = Routes.DASHBOARD
                 DashboardScreen(
-                    currentIntake = currentIntake,
-                    targetIntake  = targetIntake,
-                    onAddWater    = { amount ->
-                        currentIntake += amount
-                        val today = java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                        history[today] = currentIntake
-                        if (currentIntake >= targetIntake) streak++
+                    onShowTambah = {
+                        showNavBar = false
+                        currentRoute = Routes.TAMBAH
+                        navController.navigate(Routes.TAMBAH)
                     },
-                    streak       = streak,
-                    onShowTambah = { showTambahScreen = true },
                     onNavigateToWeeklyGoal = {
-                        showNavBar   = false
+                        showNavBar = false
                         currentRoute = Routes.WEEKLY_GOAL
                         navController.navigate(Routes.WEEKLY_GOAL)
-                    }
+                    },
+                    intakeViewModel = intakeViewModel
                 )
-                if (showTambahScreen) {
-                    TambahScreen(
-                        onTambah = { amount ->
-                            currentIntake += amount
-                            val today = java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                            history[today] = currentIntake
-                            if (currentIntake >= targetIntake) streak++
-                            showTambahScreen = false
-                        },
-                        onBatalkan = { showTambahScreen = false }
-                    )
-                }
             }
 
             composable(Routes.WEEKLY_GOAL) {
                 showNavBar   = false
                 currentRoute = Routes.WEEKLY_GOAL
+                val intakeState by intakeViewModel.state.collectAsState()
                 WeeklyGoalScreen(
-                    currentIntake = currentIntake,
-                    targetIntake  = targetIntake,
+                    currentIntake = intakeState.todayTotal,
+                    targetIntake  = 2000,
                     onBack        = { showNavBar = true; currentRoute = Routes.DASHBOARD; navController.popBackStack() }
                 )
             }
 
             composable(Routes.STATISTIK) {
                 showNavBar   = true; currentRoute = Routes.STATISTIK
-                StatistikScreen(history, targetIntake)
+                val intakeState by intakeViewModel.state.collectAsState()
+                StatistikScreen(intakeState.history, 2000)
             }
 
             composable(Routes.REMINDER) {
@@ -232,10 +259,44 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
             }
 
             composable(Routes.SETTINGS) {
-                showNavBar   = true; currentRoute = Routes.SETTINGS
+                showNavBar   = true
+                currentRoute = Routes.SETTINGS
+
                 SettingsScreen(
-                    onLogout = { authViewModel.logout() },
-                    onNavigateToEditProfile = { navController.navigate(Routes.EDIT_PROFILE) }
+                    themeViewModel = themeViewModel,
+                    onLogout = {
+                        authViewModel.logout()
+                        showNavBar = false
+                        navController.navigate(Routes.WELCOME) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    onNavigateToEditProfile = {
+                        navController.navigate(Routes.EDIT_PROFILE)
+                    }
+                )
+            }
+
+            composable(Routes.TAMBAH) {
+                showNavBar   = false
+                currentRoute = Routes.TAMBAH
+
+                TambahScreen(
+                    onTambah = { amount ->
+                        intakeViewModel.addIntake(amount)
+                        showNavBar   = true
+                        currentRoute = Routes.DASHBOARD
+                        navController.navigate(Routes.DASHBOARD) {
+                            popUpTo(Routes.DASHBOARD) { inclusive = true }
+                        }
+                    },
+                    onBatalkan = {
+                        showNavBar   = true
+                        currentRoute = Routes.DASHBOARD
+                        navController.navigate(Routes.DASHBOARD) {
+                            popUpTo(Routes.DASHBOARD) { inclusive = true }
+                        }
+                    }
                 )
             }
 
@@ -263,6 +324,7 @@ fun DrinkUpApp(authViewModel: AuthViewModel) {
 
 @Composable
 fun DrinkUpNavBar(items: List<NavItem>, currentRoute: String, onItemClick: (String) -> Unit) {
+    val navBg = MaterialTheme.colorScheme.surface
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -274,7 +336,7 @@ fun DrinkUpNavBar(items: List<NavItem>, currentRoute: String, onItemClick: (Stri
                 .fillMaxWidth()
                 .shadow(12.dp, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
-                .background(NavBg)
+                .background(navBg)
                 .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
             Row(
@@ -294,6 +356,7 @@ fun DrinkUpNavBar(items: List<NavItem>, currentRoute: String, onItemClick: (Stri
 fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
     val animOffset by animateFloatAsState(if (isActive) -18f else 0f, label = "off")
     val animScale  by animateFloatAsState(if (isActive) 1f else 0.85f, label = "sc")
+    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -316,7 +379,7 @@ fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
             Icon(
                 imageVector        = item.icon,
                 contentDescription = item.label,
-                tint               = if (isActive) Color.White else TextGray,
+                tint               = if (isActive) Color.White else inactiveColor,
                 modifier           = Modifier.size(24.dp)
             )
         }
@@ -325,7 +388,7 @@ fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
             item.label,
             fontSize   = 10.sp,
             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-            color      = if (isActive) MintPrimary else TextGray
+            color      = if (isActive) MintPrimary else inactiveColor
         )
     }
 }

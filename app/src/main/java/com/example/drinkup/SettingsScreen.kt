@@ -21,21 +21,29 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
-private val S_NavyDark      = Color(0xFF0D1B4B)
-private val S_NavyMid       = Color(0xFF1A2F6B)
+private val navyDark      = Color(0xFF0D1B4B)
+private val navyMid       = Color(0xFF1A2F6B)
 private val S_TealAccent    = Color(0xFF00BFA5)
 private val S_TealLight     = Color(0xFFB2EBF2)
-private val S_BgGray        = Color(0xFFF2F4F8)
-private val S_CardWhite     = Color(0xFFFFFFFF)
-private val S_TextPrimary   = Color(0xFF0D1B4B)
-private val S_TextSecondary = Color(0xFF8A94A6)
+private val bgColor        = Color(0xFFF2F4F8)
+private val cardColor     = Color(0xFFFFFFFF)
+private val textPrimary   = Color(0xFF0D1B4B)
+private val textSecondary = Color(0xFF8A94A6)
 
 @Composable
 fun SettingsScreen(
+    themeViewModel         : ThemeViewModel,
     onLogout               : () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {}
 ) {
-    var darkMode   by remember { mutableStateOf(false) }
+    val bgColor      = MaterialTheme.colorScheme.background
+    val cardColor    = MaterialTheme.colorScheme.surface
+    val textPrimary  = MaterialTheme.colorScheme.onBackground
+    val textSecondary= MaterialTheme.colorScheme.onSurfaceVariant
+    val navyDark     = MaterialTheme.colorScheme.primary
+    val navyMid      = MaterialTheme.colorScheme.primaryContainer
+
+    var darkMode   by remember { mutableStateOf(themeViewModel.isDarkMode) }
     var notifikasi by remember { mutableStateOf(true) }
     var nama       by remember { mutableStateOf("Pengguna") }
     var email      by remember { mutableStateOf("") }
@@ -61,7 +69,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(S_BgGray)
+            .background(bgColor)
     ) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
@@ -75,13 +83,13 @@ fun SettingsScreen(
                         text       = "Settings",
                         fontSize   = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color      = S_TextPrimary
+                        color      = textPrimary
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text     = "Customize your sanctuary experience",
                         fontSize = 14.sp,
-                        color    = S_TextSecondary
+                        color    = textSecondary
                     )
                 }
                 Spacer(Modifier.height(20.dp))
@@ -95,7 +103,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
-                        Text("Profile", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = S_TextPrimary)
+                        Text("Profile", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                         Text(
                             text       = "Edit",
                             fontSize   = 14.sp,
@@ -109,7 +117,7 @@ fun SettingsScreen(
                     Card(
                         modifier  = Modifier.fillMaxWidth().clickable { onNavigateToEditProfile() },
                         shape     = RoundedCornerShape(20.dp),
-                        colors    = CardDefaults.cardColors(containerColor = S_CardWhite),
+                        colors    = CardDefaults.cardColors(containerColor = cardColor),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Row(
@@ -119,8 +127,8 @@ fun SettingsScreen(
                             GenderAvatar(gender = gender, size = 60.dp)
                             Spacer(Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(nama, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = S_TextPrimary)
-                                Text(email, fontSize = 12.sp, color = S_TextSecondary)
+                                Text(nama, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textPrimary)
+                                Text(email, fontSize = 12.sp, color = textSecondary)
                                 Spacer(Modifier.height(6.dp))
                                 Box(
                                     modifier = Modifier
@@ -132,7 +140,7 @@ fun SettingsScreen(
                                         text       = "PRO MEMBER",
                                         fontSize   = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color      = S_NavyMid
+                                        color      = navyMid
                                     )
                                 }
                             }
@@ -145,14 +153,14 @@ fun SettingsScreen(
             // ── Health Data ──────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    Text("Health Data", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = S_TextPrimary)
+                    Text("Health Data", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                     Spacer(Modifier.height(12.dp))
 
                     // Weight card
                     Card(
                         modifier  = Modifier.fillMaxWidth().clickable { onNavigateToEditProfile() },
                         shape     = RoundedCornerShape(20.dp),
-                        colors    = CardDefaults.cardColors(containerColor = S_CardWhite),
+                        colors    = CardDefaults.cardColors(containerColor = cardColor),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
@@ -166,7 +174,7 @@ fun SettingsScreen(
                                     text          = "WEIGHT",
                                     fontSize      = 11.sp,
                                     fontWeight    = FontWeight.SemiBold,
-                                    color         = S_TextSecondary,
+                                    color         = textSecondary,
                                     letterSpacing = 1.sp
                                 )
                             }
@@ -176,12 +184,12 @@ fun SettingsScreen(
                                     text       = if (beratBadan > 0) "$beratBadan" else "—",
                                     fontSize   = 36.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color      = S_TextPrimary
+                                    color      = textPrimary
                                 )
                                 Text(
                                     text     = " kg",
                                     fontSize = 16.sp,
-                                    color    = S_TextSecondary,
+                                    color    = textSecondary,
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
                             }
@@ -221,7 +229,7 @@ fun SettingsScreen(
                     Card(
                         modifier  = Modifier.fillMaxWidth(),
                         shape     = RoundedCornerShape(20.dp),
-                        colors    = CardDefaults.cardColors(containerColor = S_NavyDark),
+                        colors    = CardDefaults.cardColors(containerColor = navyDark),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
@@ -270,13 +278,13 @@ fun SettingsScreen(
             // ── Preferences ──────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    Text("Preferences", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = S_TextPrimary)
+                    Text("Preferences", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                     Spacer(Modifier.height(12.dp))
 
                     Card(
                         modifier  = Modifier.fillMaxWidth(),
                         shape     = RoundedCornerShape(20.dp),
-                        colors    = CardDefaults.cardColors(containerColor = S_CardWhite),
+                        colors    = CardDefaults.cardColors(containerColor = cardColor),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column(modifier = Modifier.padding(horizontal = 4.dp)) {
@@ -291,17 +299,20 @@ fun SettingsScreen(
                                     modifier = Modifier
                                         .size(42.dp)
                                         .clip(CircleShape)
-                                        .background(S_NavyMid.copy(alpha = 0.12f)),
+                                        .background(navyMid.copy(alpha = 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) { Text("🌙", fontSize = 20.sp) }
                                 Spacer(Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("Dark Mode", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = S_TextPrimary)
-                                    Text("Switch to the abyss theme", fontSize = 12.sp, color = S_TextSecondary)
+                                    Text("Dark Mode", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = textPrimary)
+                                    Text("Switch to the abyss theme", fontSize = 12.sp, color = textSecondary)
                                 }
                                 Switch(
                                     checked         = darkMode,
-                                    onCheckedChange = { darkMode = it },
+                                    onCheckedChange = {
+                                        darkMode = it
+                                        themeViewModel.isDarkMode = it
+                                    },
                                     colors          = SwitchDefaults.colors(
                                         checkedThumbColor   = Color.White,
                                         checkedTrackColor   = S_TealAccent,
@@ -329,8 +340,8 @@ fun SettingsScreen(
                                 ) { Text("🔔", fontSize = 20.sp) }
                                 Spacer(Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("Smart Reminders", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = S_TextPrimary)
-                                    Text("Adaptive hydration alerts", fontSize = 12.sp, color = S_TextSecondary)
+                                    Text("Smart Reminders", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = textPrimary)
+                                    Text("Adaptive hydration alerts", fontSize = 12.sp, color = textSecondary)
                                 }
                                 Switch(
                                     checked         = notifikasi,
@@ -352,13 +363,13 @@ fun SettingsScreen(
             // ── Account ──────────────────────────────────────────────────────
             item {
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    Text("Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = S_TextPrimary)
+                    Text("Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                     Spacer(Modifier.height(12.dp))
 
                     Card(
                         modifier  = Modifier.fillMaxWidth(),
                         shape     = RoundedCornerShape(20.dp),
-                        colors    = CardDefaults.cardColors(containerColor = S_CardWhite),
+                        colors    = CardDefaults.cardColors(containerColor = cardColor),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column(modifier = Modifier.padding(horizontal = 4.dp)) {
@@ -370,16 +381,16 @@ fun SettingsScreen(
                                     .padding(horizontal = 16.dp, vertical = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("↪", fontSize = 20.sp, color = S_TextPrimary)
+                                Text("↪", fontSize = 20.sp, color = textPrimary)
                                 Spacer(Modifier.width(14.dp))
                                 Text(
                                     text       = "Logout",
                                     fontSize   = 15.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color      = S_TextPrimary,
+                                    color      = textPrimary,
                                     modifier   = Modifier.weight(1f)
                                 )
-                                Icon(Icons.Filled.ChevronRight, null, tint = S_TextSecondary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Filled.ChevronRight, null, tint = textSecondary, modifier = Modifier.size(20.dp))
                             }
 
                             Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF0F2F5), thickness = 1.dp)
@@ -409,7 +420,7 @@ fun SettingsScreen(
                                     color      = Color(0xFFD32F2F),
                                     modifier   = Modifier.weight(1f)
                                 )
-                                Text(text = "Permanent Action", fontSize = 11.sp, color = S_TextSecondary)
+                                Text(text = "Permanent Action", fontSize = 11.sp, color = textSecondary)
                             }
                         }
                     }

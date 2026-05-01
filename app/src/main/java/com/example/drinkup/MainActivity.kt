@@ -87,34 +87,33 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            // ✅ Hapus channel lama yang pakai sound default
+            // ✅ Hapus channel lama agar channel baru dengan USAGE_ALARM dibuat ulang
             manager.deleteNotificationChannel("drink_channel")
-
-            // Kalau channel baru sudah ada, skip
-            if (manager.getNotificationChannel(ReminderReceiver.CHANNEL_ID) != null) return
+            manager.deleteNotificationChannel("alarm_channel")
 
             val soundUri: Uri = try {
                 Uri.parse("android.resource://${packageName}/${R.raw.drink_reminder}")
             } catch (e: Exception) {
                 android.media.RingtoneManager.getDefaultUri(
-                    android.media.RingtoneManager.TYPE_NOTIFICATION
+                    android.media.RingtoneManager.TYPE_ALARM
                 )
             }
 
+            // ✅ FIX: Ganti USAGE_NOTIFICATION → USAGE_ALARM agar sound & vibration bisa loop
             val audioAttr = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
 
             val channel = NotificationChannel(
-                ReminderReceiver.CHANNEL_ID,   // ✅ pakai konstanta dari ReminderReceiver
-                "Drink Reminder",
+                "alarm_channel",
+                "Alarm Reminder",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description          = "Reminder minum air harian DrinkUp"
                 enableVibration(true)
-                vibrationPattern     = longArrayOf(0, 400, 200, 400)
-                setSound(soundUri, audioAttr)  // ✅ sound custom
+                vibrationPattern     = longArrayOf(0, 800, 400)
+                setSound(soundUri, audioAttr)
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
 
@@ -123,13 +122,14 @@ class MainActivity : ComponentActivity() {
     }
 
     // ── Minta permission notifikasi (Android 13+) ──────────────────────────
+    // ✅ FIX: Sebelumnya tidak pernah benar-benar request permission
     private fun askNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
+            if (ContextCompat.checkSelfPermission(
                     this, Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                }
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
@@ -139,8 +139,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
 
-        createNotificationChannel()   // ✅ buat channel dengan sound custom
-        askNotificationPermission()   // ✅ minta izin notifikasi ke user
+        createNotificationChannel()
+        askNotificationPermission()
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
@@ -281,6 +281,11 @@ fun DrinkUpApp(
                         currentRoute = Routes.WEEKLY_GOAL
                         navController.navigate(Routes.WEEKLY_GOAL)
                     },
+                    onNavigateToStreak = {
+                        showNavBar   = false
+                        currentRoute = Routes.STREAK
+                        navController.navigate(Routes.STREAK)
+                    },
                     intakeViewModel = intakeViewModel
                 )
             }
@@ -289,6 +294,19 @@ fun DrinkUpApp(
                 showNavBar   = false
                 currentRoute = Routes.WEEKLY_GOAL
                 WeeklyGoalScreen(
+                    intakeViewModel = intakeViewModel,
+                    onBack = {
+                        showNavBar   = true
+                        currentRoute = Routes.DASHBOARD
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(Routes.STREAK) {
+                showNavBar   = false
+                currentRoute = Routes.STREAK
+                StreakScreen(
                     intakeViewModel = intakeViewModel,
                     onBack = {
                         showNavBar   = true

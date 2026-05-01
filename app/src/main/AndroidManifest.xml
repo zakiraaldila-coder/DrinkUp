@@ -8,11 +8,7 @@
     <!-- Exact alarm (wajib untuk setExactAndAllowWhileIdle) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!--
-        USE_EXACT_ALARM: alternatif SCHEDULE_EXACT_ALARM untuk Android 13+
-        (tidak perlu izin runtime, langsung granted).
-        Hapus salah satu jika Play Store menolak — biasanya cukup SCHEDULE_EXACT_ALARM.
-    -->
+    <!-- USE_EXACT_ALARM: alternatif SCHEDULE_EXACT_ALARM untuk Android 13+ -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <!-- Supaya alarm tetap jalan saat layar mati -->
@@ -23,6 +19,12 @@
 
     <!-- Getaran saat alarm berbunyi -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- ✅ FIX 1: Wajib ada agar startForegroundService() tidak diam-diam gagal -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- ✅ FIX 2: Wajib untuk foregroundServiceType="specialUse" -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:allowBackup="true"
@@ -38,6 +40,16 @@
         <receiver
             android:name=".ReminderReceiver"
             android:exported="true" />
+
+        <!-- ✅ FIX 3: Ganti foregroundServiceType dari mediaPlayback ke specialUse -->
+        <service
+            android:name=".AlarmService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="alarm_reminder" />
+        </service>
 
         <activity
             android:name=".MainActivity"

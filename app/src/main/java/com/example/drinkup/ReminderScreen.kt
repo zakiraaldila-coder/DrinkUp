@@ -14,7 +14,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,32 +28,86 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 // ── Data Model ────────────────────────────────────────────────────────────────
 data class ReminderItem(
-    val id        : Int,
-    val label     : String,
-    val hour      : Int,
-    val minute    : Int,
-    val days      : List<String>,
-    val isActive  : Boolean,
+    val id        : String  = "",   // Firestore document ID (String)
+    val label     : String  = "",
+    val hour      : Int     = 8,
+    val minute    : Int     = 0,
+    val days      : List<String> = emptyList(),
+    val isActive  : Boolean = true,
     val vibration : Boolean = true
+)
+
+// ── Firestore helpers ─────────────────────────────────────────────────────────
+private fun remindersCollection() = FirebaseFirestore.getInstance()
+    .collection("users")
+    .document(FirebaseAuth.getInstance().currentUser?.uid ?: "")
+    .collection("reminders")
+
+private fun ReminderItem.toMap() = mapOf(
+    "label"     to label,
+    "hour"      to hour,
+    "minute"    to minute,
+    "days"      to days,
+    "isActive"  to isActive,
+    "vibration" to vibration
+)
+
+private fun Map<String, Any>.toReminderItem(id: String) = ReminderItem(
+    id        = id,
+    label     = this["label"] as? String ?: "",
+    hour      = (this["hour"] as? Long)?.toInt() ?: 8,
+    minute    = (this["minute"] as? Long)?.toInt() ?: 0,
+    days      = (this["days"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+    isActive  = this["isActive"] as? Boolean ?: true,
+    vibration = this["vibration"] as? Boolean ?: true
 )
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderScreen() {
-    val db  = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-    val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    val colorScheme = MaterialTheme.colorScheme
+    val context     = LocalContext.current
 
-    var reminders       by remember { mutableStateOf(listOf<ReminderItem>()) }
-    val context         = LocalContext.current
-    val colorScheme     = MaterialTheme.colorScheme
+    var reminders   by remember { mutableStateOf<List<ReminderItem>>(emptyList()) }
+    var isLoading   by remember { mutableStateOf(true) }
+
     var showAddSheet    by remember { mutableStateOf(false) }
     var showPermWarning by remember { mutableStateOf(false) }
-    var deleteTarget    by remember { mutableStateOf<ReminderItem?>(null) }
     val sheetState      = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // ── Load reminders dari Firestore (realtime) ──────────────────────────────
+    DisposableEffect(Unit) {
+        val reg = remindersCollection()
+            .addSnapshotListener { snap, _ ->
+                if (snap != null) {
+                    val loaded = snap.documents.mapNotNull { doc ->
+                        (doc.data ?: return@mapNotNull null).toReminderItem(doc.id)
+                    }.sortedWith(compareBy({ it.hour }, { it.minute }))
+                    reminders = loaded
+                    isLoading = false
+
+                    // Re-schedule alarm yang aktif (supaya tetap jalan setelah login ulang)
+                    loaded.filter { it.isActive }.forEach { item ->
+                        AlarmHelper.scheduleReminder(
+                            context    = context,
+                            reminderId = item.id.hashCode(),
+                            hour       = item.hour,
+                            minute     = item.minute,
+                            days       = item.days,
+                            label      = item.label,
+                            vibration  = item.vibration
+                        )
+                    }
+                }
+            }
+        onDispose { reg.remove() }
+    }
 
     val permLauncher = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -59,91 +115,65 @@ fun ReminderScreen() {
         }
     } else null
 
-    // ── Helper: refresh list dari Firestore ───────────────────────────────────
-    reminders = result.map { doc ->
-
-        val item = ReminderItem(
-            id = doc.getLong("reminderId")!!.toInt(),
-            label = doc.getString("label") ?: "",
-            hour = doc.getLong("hour")!!.toInt(),
-            minute = doc.getLong("minute")!!.toInt(),
-            days = doc.get("days") as List<String>,
-            isActive = doc.getBoolean("isActive") ?: true
-        )
-
-        // 🔥 INI KUNCI NOTIF HIDUP LAGI
-        if (item.isActive) {
-            AlarmHelper.scheduleAlarm(
-                context,
-                item.id,
-                item.hour,
-                item.minute,
-                item.days,
-                item.label,
-                true
-            )
-        }
-
-        item
-    }
-
-    // ── Toggle aktif/nonaktif ─────────────────────────────────────────────────
+    // ── Toggle reminder (update Firestore + alarm) ────────────────────────────
     fun toggleReminder(item: ReminderItem, on: Boolean) {
-        if (uid == null) return
-        db.collection("users")
-            .document(uid)
-            .collection("reminders")
-            .get()
-            .addOnSuccessListener { result ->
-                result.find { it.getLong("reminderId")!!.toInt() == item.id }
-                    ?.reference
-                    ?.update("isActive", on)
-            }
+        if (on && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                permLauncher?.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            else showPermWarning = true
+            return
+        }
+        remindersCollection().document(item.id).update("isActive", on)
+        if (on) {
+            AlarmHelper.scheduleReminder(
+                context    = context,
+                reminderId = item.id.hashCode(),
+                hour       = item.hour,
+                minute     = item.minute,
+                days       = item.days,
+                label      = item.label,
+                vibration  = item.vibration
+            )
+        } else {
+            AlarmHelper.cancelReminder(context, item.id.hashCode(), item.days)
+        }
     }
 
-    // ── Load awal ─────────────────────────────────────────────────────────────
-    LaunchedEffect(Unit) {
-        refreshReminders()
-    }
-
-    // ── Konfirmasi Hapus Dialog ───────────────────────────────────────────────
-    deleteTarget?.let { target ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text("Hapus Reminder?", fontWeight = FontWeight.Bold) },
-            text  = {
-                Text(
-                    "Apakah kamu yakin ingin menghapus \"${target.label}\"?\n" +
-                            "Alarm ini tidak akan berbunyi lagi."
+    // ── Tambah reminder baru (simpan ke Firestore) ────────────────────────────
+    fun addReminder(
+        hour      : Int,
+        minute    : Int,
+        label     : String,
+        days      : List<String>,
+        vibration : Boolean
+    ) {
+        val newItem = ReminderItem(
+            id        = "",
+            label     = label,
+            hour      = hour,
+            minute    = minute,
+            days      = days,
+            isActive  = true,
+            vibration = vibration
+        )
+        remindersCollection().add(newItem.toMap())
+            .addOnSuccessListener { docRef ->
+                AlarmHelper.scheduleReminder(
+                    context    = context,
+                    reminderId = docRef.id.hashCode(),
+                    hour       = hour,
+                    minute     = minute,
+                    days       = days,
+                    label      = label,
+                    vibration  = vibration
                 )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (uid != null) {
-                            db.collection("users")
-                                .document(uid)
-                                .collection("reminders")
-                                .get()
-                                .addOnSuccessListener { result ->
-                                    result.find { it.getLong("reminderId")!!.toInt() == target.id }
-                                        ?.reference
-                                        ?.delete()
-                                        ?.addOnSuccessListener { refreshReminders() }
-                                }
-                        }
-                        deleteTarget = null
-                    }
-                ) {
-                    Text("Hapus", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) {
-                    Text("Batal")
-                }
             }
-        ) // ← closing AlertDialog yang benar
+    }
+
+    // ── Hapus reminder (dari Firestore + cancel alarm) ────────────────────────
+    fun deleteReminder(item: ReminderItem) {
+        AlarmHelper.cancelReminder(context, item.id.hashCode(), item.days)
+        remindersCollection().document(item.id).delete()
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────
@@ -244,42 +274,91 @@ fun ReminderScreen() {
                 }
             }
 
-            // ── Empty State ────────────────────────────────────────────────
-            if (reminders.isEmpty()) {
+            // ── Loading ────────────────────────────────────────────────────
+            if (isLoading) {
                 item {
                     Box(
-                        modifier         = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 60.dp),
+                        modifier         = Modifier.fillMaxWidth().padding(40.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("💧", fontSize = 48.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "Belum ada reminder",
-                                fontWeight = FontWeight.Bold,
-                                fontSize   = 18.sp,
-                                color      = colorScheme.onSurface
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "Tap tombol di atas untuk menambahkan",
-                                fontSize = 14.sp,
-                                color    = colorScheme.onSurfaceVariant
-                            )
-                        }
+                        CircularProgressIndicator(color = colorScheme.primary)
                     }
                 }
             }
 
-            // ── Reminder List ──────────────────────────────────────────────
-            items(reminders, key = { it.id }) { item ->
-                ReminderCard(
-                    item     = item,
-                    onToggle = { on -> toggleReminder(item, on) },
-                    onDelete = { deleteTarget = item }
-                )
+            // ── Reminder List / Empty State ────────────────────────────────
+            if (!isLoading && reminders.isEmpty()) {
+                item {
+                    Box(
+                        modifier         = Modifier.fillMaxWidth().padding(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🔕", fontSize = 48.sp)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Belum ada reminder",
+                                fontWeight = FontWeight.SemiBold,
+                                color      = colorScheme.onSurfaceVariant,
+                                fontSize   = 15.sp
+                            )
+                            Text(
+                                "Klik + Tambah Reminder untuk membuat baru",
+                                color    = colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(reminders, key = { it.id }) { item ->
+                    ReminderCard(
+                        item     = item,
+                        onToggle = { on -> toggleReminder(item, on) },
+                        onDelete = { deleteReminder(item) }
+                    )
+                }
+            }
+
+            // ── Info Card ──────────────────────────────────────────────────
+            item {
+                Spacer(Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    shape  = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.tertiaryContainer)
+                ) {
+                    Box {
+                        Text(
+                            text     = "💧",
+                            fontSize = 72.sp,
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 16.dp)
+                                .offset(y = 8.dp),
+                            color = Color(0x33000000)
+                        )
+                        Column(modifier = Modifier.padding(24.dp)) {
+                            Text(
+                                text       = "Smart Reminders",
+                                fontSize   = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color      = colorScheme.onTertiaryContainer
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text       = "We'll space out your alerts based on your daily goal and waking hours for optimal cellular hydration.",
+                                fontSize   = 13.sp,
+                                color      = colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                lineHeight = 20.sp,
+                                modifier   = Modifier.fillMaxWidth(0.72f)
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
             }
         }
 
@@ -293,27 +372,8 @@ fun ReminderScreen() {
                 AddReminderSheet(
                     onDismiss = { showAddSheet = false },
                     onSave    = { hour, minute, label, days, vibration ->
-                        if (uid == null) return@AddReminderSheet
-
-                        val reminderId = System.currentTimeMillis().toInt()
-                        val data = hashMapOf(
-                            "reminderId" to reminderId,
-                            "hour"       to hour,
-                            "minute"     to minute,
-                            "label"      to label,
-                            "days"       to days,
-                            "isActive"   to true
-                        )
-
-                        db.collection("users")
-                            .document(uid)
-                            .collection("reminders")
-                            .add(data)
-                            .addOnSuccessListener {
-                                // Refresh list SETELAH data berhasil disimpan
-                                refreshReminders()
-                                showAddSheet = false
-                            }
+                        addReminder(hour, minute, label, days, vibration)
+                        showAddSheet = false
                     }
                 )
             }
@@ -324,13 +384,13 @@ fun ReminderScreen() {
 // ── Reminder Card ─────────────────────────────────────────────────────────────
 @Composable
 fun ReminderCard(
-    item    : ReminderItem,
-    onToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    item     : ReminderItem,
+    onToggle : (Boolean) -> Unit,
+    onDelete : () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val timeStr     = String.format("%02d:%02d", item.hour, item.minute)
-    val isActive    = item.isActive
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -339,7 +399,7 @@ fun ReminderCard(
         shape     = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors    = CardDefaults.cardColors(
-            containerColor = if (isActive) colorScheme.surface
+            containerColor = if (item.isActive) colorScheme.surface
             else colorScheme.surfaceVariant.copy(alpha = 0.6f)
         )
     ) {
@@ -351,31 +411,30 @@ fun ReminderCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text(
-                    text       = timeStr,
-                    fontSize   = 40.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = if (isActive) colorScheme.onSurface
-                    else colorScheme.onSurface.copy(alpha = 0.4f)
-                )
+                Column {
+                    Text(
+                        text       = timeStr,
+                        fontSize   = 36.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = if (item.isActive) colorScheme.onSurface else colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text     = item.label,
+                        fontSize = 12.sp,
+                        color    = if (item.isActive) colorScheme.secondary else colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick  = onDelete,
-                        modifier = Modifier.size(36.dp)
-                    ) {
+                    IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(
                             imageVector        = Icons.Filled.Delete,
                             contentDescription = "Hapus reminder",
-                            tint               = colorScheme.error.copy(alpha = 0.7f),
-                            modifier           = Modifier.size(20.dp)
+                            tint               = colorScheme.error.copy(alpha = 0.7f)
                         )
                     }
-
-                    Spacer(Modifier.width(4.dp))
-
                     Switch(
-                        checked         = isActive,
+                        checked         = item.isActive,
                         onCheckedChange = onToggle,
                         colors          = SwitchDefaults.colors(
                             checkedThumbColor   = Color.White,
@@ -387,15 +446,6 @@ fun ReminderCard(
                 }
             }
 
-            // ── Label ──────────────────────────────────────────────────────
-            Text(
-                text       = item.label,
-                fontSize   = 14.sp,
-                color      = if (isActive) colorScheme.secondary
-                else colorScheme.onSurface.copy(alpha = 0.4f),
-                fontWeight = FontWeight.Medium
-            )
-
             Spacer(Modifier.height(10.dp))
 
             // ── Days Chips ─────────────────────────────────────────────────
@@ -406,10 +456,29 @@ fun ReminderCard(
                     else                           -> item.days
                 }
                 dayLabels.forEach { day ->
-                    DayChip(label = day, isActive = isActive)
+                    DayChip(label = day, isActive = item.isActive)
                 }
             }
         }
+    }
+
+    // ── Konfirmasi hapus ───────────────────────────────────────────────────────
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title   = { Text("Hapus Reminder?", fontWeight = FontWeight.Bold) },
+            text    = { Text("Reminder \"${item.label}\" akan dihapus permanen.") },
+            confirmButton = {
+                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                    Text("Hapus", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
@@ -481,77 +550,116 @@ fun AddReminderSheet(
         )
         Spacer(Modifier.height(20.dp))
 
-        // ── Time Picker ───────────────────────────────────────────────────
-        Row(
-            modifier              = Modifier
+        // ── Clock Picker ──────────────────────────────────────────────────
+        Box(
+            modifier         = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+                .padding(top = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier         = Modifier
+                    .size(240.dp)
+                    .clip(CircleShape)
+                    .background(colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(onClick = { selectedHour = (selectedHour % 12) + 1 }) {
+                            Text("▲", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
+                        }
+                        Text(
+                            text       = String.format("%02d", selectedHour),
+                            fontSize   = 52.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color      = colorScheme.onSurface
+                        )
+                        Text("JAM", fontSize = 11.sp, color = colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                        IconButton(onClick = {
+                            selectedHour = if (selectedHour == 1) 12 else selectedHour - 1
+                        }) {
+                            Text("▼", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    Text(
+                        ":",
+                        fontSize   = 48.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = colorScheme.onSurface,
+                        modifier   = Modifier.padding(horizontal = 4.dp)
+                    )
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(onClick = { selectedMinute = (selectedMinute + 1) % 60 }) {
+                            Text("▲", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
+                        }
+                        Text(
+                            text       = String.format("%02d", selectedMinute),
+                            fontSize   = 52.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color      = colorScheme.onSurface
+                        )
+                        Text("MENIT", fontSize = 11.sp, color = colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                        IconButton(onClick = {
+                            selectedMinute = if (selectedMinute == 0) 59 else selectedMinute - 1
+                        }) {
+                            Text("▼", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    Column(
+                        modifier            = Modifier.padding(start = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (isAm) colorScheme.primary else colorScheme.surfaceVariant)
+                                .clickable { isAm = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "AM",
+                                fontSize   = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = if (isAm) colorScheme.onPrimary else colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (!isAm) colorScheme.primary else colorScheme.surfaceVariant)
+                                .clickable { isAm = false }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "PM",
+                                fontSize   = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = if (!isAm) colorScheme.onPrimary else colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier              = Modifier.fillMaxWidth().padding(top = 12.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            // Jam
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { if (selectedHour < 12) selectedHour++ else selectedHour = 1 }) {
-                    Text("▲", fontSize = 18.sp, color = colorScheme.secondary)
-                }
-                Text(
-                    text       = String.format("%02d", selectedHour),
-                    fontSize   = 52.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = colorScheme.onSurface
-                )
-                IconButton(onClick = { if (selectedHour > 1) selectedHour-- else selectedHour = 12 }) {
-                    Text("▼", fontSize = 18.sp, color = colorScheme.secondary)
-                }
-            }
-
-            Text(
-                text       = ":",
-                fontSize   = 52.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color      = colorScheme.onSurface,
-                modifier   = Modifier.padding(horizontal = 8.dp)
-            )
-
-            // Menit
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { selectedMinute = (selectedMinute + 5) % 60 }) {
-                    Text("▲", fontSize = 18.sp, color = colorScheme.secondary)
-                }
-                Text(
-                    text       = String.format("%02d", selectedMinute),
-                    fontSize   = 52.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = colorScheme.onSurface
-                )
-                IconButton(onClick = { selectedMinute = (selectedMinute - 5 + 60) % 60 }) {
-                    Text("▼", fontSize = 18.sp, color = colorScheme.secondary)
-                }
-            }
-
-            Spacer(Modifier.width(16.dp))
-
-            // AM/PM
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                listOf(true to "AM", false to "PM").forEach { (amVal, label) ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isAm == amVal) colorScheme.secondary else colorScheme.surfaceVariant
-                            )
-                            .clickable { isAm = amVal }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text       = label,
-                            fontWeight = FontWeight.Bold,
-                            color      = if (isAm == amVal) Color.White else colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (amVal) Spacer(Modifier.height(8.dp))
-                }
-            }
+            Text("🕐", fontSize = 14.sp)
+            Spacer(Modifier.width(6.dp))
+            Text("Geser untuk menyesuaikan waktu", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
         }
 
         Spacer(Modifier.height(24.dp))

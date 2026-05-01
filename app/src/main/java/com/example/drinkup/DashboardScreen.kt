@@ -35,6 +35,7 @@ private val DashWater2 = Color(0xFF0288D1)
 fun DashboardScreen(
     onShowTambah           : () -> Unit = {},
     onNavigateToWeeklyGoal : () -> Unit = {},
+    onNavigateToStreak     : () -> Unit = {},
     authViewModel          : AuthViewModel   = viewModel(),
     intakeViewModel        : IntakeViewModel = viewModel()
 ) {
@@ -61,7 +62,7 @@ fun DashboardScreen(
         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(ts))
     } ?: "--:--"
 
-    val gelasHariIni = (currentIntake / 250).coerceAtLeast(0)
+    val gelasHariIni = intakeState.todayEntries.size
 
     val hour     = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -114,8 +115,9 @@ fun DashboardScreen(
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Color(0xFFE65100).copy(alpha = 0.15f)
+                    shape    = RoundedCornerShape(50),
+                    color    = Color(0xFFE65100).copy(alpha = 0.15f),
+                    modifier = Modifier.clickable { onNavigateToStreak() }
                 ) {
                     Row(
                         modifier          = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),

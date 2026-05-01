@@ -61,6 +61,8 @@ object Routes {
     const val WEEKLY_GOAL      = "weekly_goal"
     const val COMPLETE_PROFILE = "complete_profile"
     const val TAMBAH           = "tambah"
+    const val ARTICLE          = "article"
+    const val STREAK           = "streak"
 }
 
 data class NavItem(val route: String, val icon: ImageVector, val label: String)
@@ -299,7 +301,14 @@ fun DrinkUpApp(
             composable(Routes.STATISTIK) {
                 showNavBar   = true
                 currentRoute = Routes.STATISTIK
-                StatistikScreen(intakeViewModel = intakeViewModel)
+                StatistikScreen(
+                    intakeViewModel = intakeViewModel,
+                    onReadMore      = {
+                        showNavBar   = false
+                        currentRoute = Routes.ARTICLE
+                        navController.navigate(Routes.ARTICLE)
+                    }
+                )
             }
 
             composable(Routes.REMINDER) {
@@ -356,6 +365,23 @@ fun DrinkUpApp(
                         showNavBar   = true
                         currentRoute = Routes.SETTINGS
                         navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(Routes.ARTICLE) {
+                showNavBar   = false
+                currentRoute = Routes.ARTICLE
+                ArticleScreen(
+                    onBack  = {
+                        showNavBar   = true
+                        currentRoute = Routes.STATISTIK
+                        navController.popBackStack()
+                    },
+                    onDrink = {
+                        showNavBar   = true
+                        currentRoute = Routes.TAMBAH
+                        navController.navigate(Routes.TAMBAH)
                     }
                 )
             }

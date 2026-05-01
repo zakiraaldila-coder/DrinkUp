@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +30,8 @@ import java.util.*
 
 @Composable
 fun StatistikScreen(
-    intakeViewModel: IntakeViewModel
+    intakeViewModel : IntakeViewModel,
+    onReadMore      : () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val intakeState by intakeViewModel.state.collectAsState()
@@ -99,66 +101,9 @@ fun StatistikScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // ── Top two stat cards ───────────────────────────────────────────
+            // ── Health Tips card (dipindah ke atas) ──────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    SmallStatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = "🎯",
-                        label = "TARGET HARI INI",
-                        value = "${String.format("%.1f", targetIntake / 1000.0)} L"
-                    )
-                    SmallStatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = "📈",
-                        label = "RATA-RATA",
-                        value = "${String.format("%.1f", avgL)} L"
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // ── Rekor terbaik ────────────────────────────────────────────────
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = colorScheme.primaryContainer),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.EmojiEvents,
-                                contentDescription = null,
-                                tint = Color(0xFFFFD700),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "REKOR TERBAIK",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                                letterSpacing = 1.sp
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "${String.format("%.1f", recordL)} L",
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
+                HealthTipsCard(onReadMore = onReadMore)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
@@ -189,12 +134,6 @@ fun StatistikScreen(
                     hourlyBuckets = hourlyBuckets,
                     hourLabels    = hourLabels
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // ── Health Tips card ─────────────────────────────────────────────
-            item {
-                HealthTipsCard()
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -624,7 +563,7 @@ fun SmallStatCard(
 }
 
 @Composable
-fun HealthTipsCard() {
+fun HealthTipsCard(onReadMore: () -> Unit = {}) {
     val colorScheme = MaterialTheme.colorScheme
     Card(
         modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -680,7 +619,8 @@ fun HealthTipsCard() {
                     text       = "Baca Selengkapnya →",
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color      = colorScheme.primary
+                    color      = colorScheme.primary,
+                    modifier   = Modifier.clickable { onReadMore() }
                 )
             }
         }

@@ -1,6 +1,7 @@
 [versions]
 agp = "8.7.3"
 kotlin = "2.1.21"
+ksp = "2.1.21-1.0.29"                  # ← TAMBAHAN: harus cocok dengan kotlin version
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -8,6 +9,7 @@ espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
+room = "2.6.1"                          # ← TAMBAHAN: versi Room
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -24,8 +26,12 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }       # ← TAMBAHAN
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }               # ← TAMBAHAN
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }     # ← TAMBAHAN
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }                                 # ← TAMBAHAN

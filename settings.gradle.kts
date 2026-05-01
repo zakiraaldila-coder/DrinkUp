@@ -1,5 +1,6 @@
 pluginManagement {
     repositories {
+        gradlePluginPortal()   // ← PINDAH KE ATAS, ini tempat KSP disimpan
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -8,7 +9,6 @@ pluginManagement {
             }
         }
         mavenCentral()
-        gradlePluginPortal()
     }
 }
 dependencyResolutionManagement {

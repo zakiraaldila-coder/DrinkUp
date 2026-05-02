@@ -22,9 +22,7 @@
 
     <!-- ✅ FIX 1: Wajib ada agar startForegroundService() tidak diam-diam gagal -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- ✅ FIX 2: Wajib untuk foregroundServiceType="specialUse" -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:allowBackup="true"
@@ -41,15 +39,11 @@
             android:name=".ReminderReceiver"
             android:exported="true" />
 
-        <!-- ✅ FIX 3: Ganti foregroundServiceType dari mediaPlayback ke specialUse -->
+        <!-- AlarmService pakai mediaPlayback (untuk bunyi alarm) -->
         <service
             android:name=".AlarmService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="alarm_reminder" />
-        </service>
+            android:foregroundServiceType="mediaPlayback" />
 
         <activity
             android:name=".MainActivity"

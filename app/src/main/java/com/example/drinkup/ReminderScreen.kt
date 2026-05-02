@@ -89,18 +89,11 @@ fun ReminderScreen() {
                     }.sortedWith(compareBy({ it.hour }, { it.minute }))
                     reminders = loaded
                     isLoading = false
-
-                    loaded.filter { it.isActive }.forEach { item ->
-                        AlarmHelper.scheduleReminder(
-                            context    = context,
-                            reminderId = item.id.hashCode(),
-                            hour       = item.hour,
-                            minute     = item.minute,
-                            days       = item.days,
-                            label      = item.label,
-                            vibration  = item.vibration
-                        )
-                    }
+                    // ✅ TIDAK ada scheduleReminder di sini.
+                    // Snapshot listener fire setiap kali Firestore berubah,
+                    // termasuk setelah addReminder/toggleReminder — sehingga
+                    // kalau schedule dilakukan di sini akan dobel dengan
+                    // schedule yang sudah dilakukan di addReminder/toggleReminder.
                 }
             }
         onDispose { reg.remove() }
@@ -142,9 +135,13 @@ fun ReminderScreen() {
         )
         remindersCollection().add(newItem.toMap())
             .addOnSuccessListener { docRef ->
+                val reminderId = docRef.id.hashCode()
+                // ✅ Cancel dulu sebelum schedule — pastikan tidak ada
+                // sisa alarm lama dengan reminderId yang sama di AlarmManager
+                AlarmHelper.cancelReminder(context, reminderId, days)
                 AlarmHelper.scheduleReminder(
                     context    = context,
-                    reminderId = docRef.id.hashCode(),
+                    reminderId = reminderId,
                     hour       = hour,
                     minute     = minute,
                     days       = days,

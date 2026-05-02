@@ -18,6 +18,9 @@ object AlarmHelper {
         label      : String,
         vibration  : Boolean
     ) {
+
+        cancelReminder(context, reminderId, days)
+
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val expandedDays = expandDays(days)
 

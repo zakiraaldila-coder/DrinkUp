@@ -1,6 +1,7 @@
 package com.example.drinkup
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,99 +17,106 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlin.math.sin
+import kotlin.math.cos
 
-// ── Palette ────────────────────────────────────────────────────────────────────
-private val BgTop      = Color(0xFF0A2050)   // navy atas (gelap)
-private val BgMid      = Color(0xFF0C3070)   // biru tengah
-private val BgBot      = Color(0xFF0A1A40)   // navy bawah
-private val DropOuter  = Color(0xFF7ED8F6)   // biru muda terang drop
-private val DropInner  = Color(0xFF0D2A5C)   // navy gelap isi drop
-private val GlassRing  = Color(0x33FFFFFF)   // putih transparan untuk ring
-private val WaveBar    = Color(0xFF5DD9F0)   // teal/light-blue bar
-private val WaveBar2   = Color(0xFF29ABD4)
-private val TrackColor = Color(0x33FFFFFF)   // track putih transparan
-private val TextWhite  = Color(0xFFFFFFFF)
-private val TextSub    = Color(0xFFB8D4F0)
+// ── Palette ──────────────────────────────────────────────────────────────────
+private val BgDeep    = Color(0xFF010914)
+private val BgMid     = Color(0xFF041530)
+private val BgAccent  = Color(0xFF062550)
+private val Cyan      = Color(0xFF00D4FF)
+private val CyanSoft  = Color(0xFF4DD9FF)
+private val Gold      = Color(0xFFFFD166)
+private val TextWhite = Color(0xFFFFFFFF)
+private val TextSub   = Color(0xFF8EC8E8)
+
+// ── Partikel ─────────────────────────────────────────────────────────────────
+private data class Particle(
+    val x: Float, val y: Float, val size: Float,
+    val speedOffset: Float, val alpha: Float, val isGold: Boolean
+)
+
+private val particles = listOf(
+    Particle(0.07f, 0.10f, 3f, 0.0f, 0.55f, false),
+    Particle(0.88f, 0.07f, 2f, 0.5f, 0.40f, true),
+    Particle(0.93f, 0.28f, 4f, 1.0f, 0.50f, false),
+    Particle(0.04f, 0.42f, 2f, 1.5f, 0.35f, true),
+    Particle(0.80f, 0.52f, 3f, 2.0f, 0.55f, false),
+    Particle(0.14f, 0.68f, 5f, 0.7f, 0.40f, false),
+    Particle(0.91f, 0.74f, 2f, 1.2f, 0.45f, true),
+    Particle(0.42f, 0.04f, 3f, 1.8f, 0.35f, false),
+    Particle(0.62f, 0.94f, 2f, 0.3f, 0.40f, true),
+    Particle(0.22f, 0.86f, 4f, 2.5f, 0.50f, false),
+    Particle(0.72f, 0.16f, 2f, 0.9f, 0.55f, true),
+    Particle(0.52f, 0.80f, 3f, 1.6f, 0.40f, false),
+)
 
 @Composable
 fun SplashScreen(onSplashFinished: () -> Unit) {
 
-    // ── Phase ───────────────────────────────────────────────────────────────
-    // 0 = awal, 1 = logo muncul, 2 = teks muncul, 3 = loading, 4 = fade out
-    var phase by remember { mutableStateOf(0) }
+    // ── Phase ─────────────────────────────────────────────────────────────────
+    // 0=init, 1=maskot muncul, 2=wave, 3=teks, 4=loading, 5=fade out
+    var phase by remember { mutableIntStateOf(0) }
 
-    // ── Infinite transition ─────────────────────────────────────────────────
     val inf = rememberInfiniteTransition(label = "inf")
 
-    // Float logo naik turun
+    // Float naik turun
     val floatY by inf.animateFloat(
-        initialValue  = -7f,
-        targetValue   = 7f,
-        animationSpec = infiniteRepeatable(
-            tween(2200, easing = FastOutSlowInEasing),
-            RepeatMode.Reverse
-        ),
+        initialValue  = -7f, targetValue = 7f,
+        animationSpec = infiniteRepeatable(tween(2200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "floatY"
     )
-
-    // Rotasi ring luar (berputar lambat)
+    // Wave goyang
+    val waveRot by inf.animateFloat(
+        initialValue  = -15f, targetValue = 15f,
+        animationSpec = infiniteRepeatable(tween(420, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "waveRot"
+    )
+    // Partikel
+    val particlePhase by inf.animateFloat(
+        initialValue  = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(3200, easing = LinearEasing), RepeatMode.Restart),
+        label = "particlePhase"
+    )
+    // Blob pulse
+    val blobPulse by inf.animateFloat(
+        initialValue  = 0.88f, targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(tween(2800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "blobPulse"
+    )
+    // Ring rotate
     val ringRot by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = 360f,
-        animationSpec = infiniteRepeatable(
-            tween(12000, easing = LinearEasing),
-            RepeatMode.Restart
-        ),
+        initialValue  = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(20000, easing = LinearEasing), RepeatMode.Restart),
         label = "ringRot"
     )
-
-    // Pulse glow drop
-    val pulseScale by inf.animateFloat(
-        initialValue  = 0.96f,
-        targetValue   = 1.04f,
-        animationSpec = infiniteRepeatable(
-            tween(1600, easing = FastOutSlowInEasing),
-            RepeatMode.Reverse
-        ),
-        label = "pulse"
+    // Glow pulse bawah maskot
+    val glowPulse by inf.animateFloat(
+        initialValue  = 0.6f, targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "glowPulse"
     )
-
-    // ── Wave loading: posisi kepala gelombang ───────────────────────────────
-    // Kita simulasikan gelombang dengan multiple sinusoidal offset
-    val wavePhase by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            tween(900, easing = LinearEasing),
-            RepeatMode.Restart
-        ),
-        label = "wavePhase"
-    )
-
     // Shimmer bar
     val shimmer by inf.animateFloat(
-        initialValue  = -1f,
-        targetValue   = 2f,
-        animationSpec = infiniteRepeatable(
-            tween(1600, easing = LinearEasing),
-            RepeatMode.Restart
-        ),
+        initialValue  = -1f, targetValue = 2f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
         label = "shimmer"
     )
-
-    // Dots label
+    // Dots teks
     val dotsAnim by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = 1f,
+        initialValue  = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Restart),
-        label         = "dots"
+        label = "dots"
     )
     val dotsText = when ((dotsAnim * 4).toInt() % 4) {
         0    -> "MEMPERSIAPKAN HIDRASI ANDA"
@@ -117,77 +125,49 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
         else -> "MEMPERSIAPKAN HIDRASI ANDA  · · ·"
     }
 
-    // ── Glow blob latar dekorasi ─────────────────────────────────────────────
-    val blobPulse by inf.animateFloat(
-        initialValue  = 0.7f,
-        targetValue   = 1.0f,
-        animationSpec = infiniteRepeatable(
-            tween(3000, easing = FastOutSlowInEasing),
-            RepeatMode.Reverse
-        ),
-        label = "blobPulse"
+    // ── State animations ──────────────────────────────────────────────────────
+    val mascotScale by animateFloatAsState(
+        targetValue   = if (phase >= 1) 1f else 2.2f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "mascotScale"
     )
-
-    // ── Phase-driven animations ──────────────────────────────────────────────
-
-    // Logo
-    val logoScale by animateFloatAsState(
-        targetValue   = if (phase >= 1) 1f else 0.3f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness    = Spring.StiffnessLow
-        ),
-        label = "logoScale"
+    val mascotAlpha by animateFloatAsState(
+        targetValue = if (phase >= 1) 1f else 0f,
+        animationSpec = tween(300), label = "mascotAlpha"
     )
-    val logoAlpha by animateFloatAsState(
-        targetValue   = if (phase >= 1) 1f else 0f,
-        animationSpec = tween(600),
-        label         = "logoAlpha"
-    )
-
-    // Teks
     val textAlpha by animateFloatAsState(
-        targetValue   = if (phase >= 2) 1f else 0f,
-        animationSpec = tween(700),
-        label         = "textAlpha"
+        targetValue = if (phase >= 3) 1f else 0f,
+        animationSpec = tween(700), label = "textAlpha"
     )
     val textSlide by animateFloatAsState(
-        targetValue   = if (phase >= 2) 0f else 30f,
-        animationSpec = tween(700, easing = FastOutSlowInEasing),
-        label         = "textSlide"
+        targetValue   = if (phase >= 3) 0f else 30f,
+        animationSpec = tween(700, easing = FastOutSlowInEasing), label = "textSlide"
     )
-
-    // Loading bar progress
     val barProgress by animateFloatAsState(
-        targetValue   = if (phase >= 3) 1f else 0f,
-        animationSpec = tween(2400, easing = FastOutSlowInEasing),
-        label         = "barProgress"
+        targetValue   = if (phase >= 4) 1f else 0f,
+        animationSpec = tween(2200, easing = FastOutSlowInEasing), label = "barProgress"
     )
-
-    // Bottom section fade
     val bottomAlpha by animateFloatAsState(
-        targetValue   = if (phase >= 3) 1f else 0f,
-        animationSpec = tween(500),
-        label         = "bottomAlpha"
+        targetValue = if (phase >= 4) 1f else 0f,
+        animationSpec = tween(500), label = "bottomAlpha"
     )
-
-    // Screen fade-out
     val screenAlpha by animateFloatAsState(
-        targetValue   = if (phase >= 4) 0f else 1f,
-        animationSpec = tween(450, easing = FastOutLinearInEasing),
-        label         = "screenAlpha"
+        targetValue   = if (phase >= 5) 0f else 1f,
+        animationSpec = tween(450, easing = FastOutLinearInEasing), label = "screenAlpha"
     )
 
-    // ── Timing ───────────────────────────────────────────────────────────────
+    val isWaving = phase >= 2
+
     LaunchedEffect(Unit) {
-        delay(200);  phase = 1   // logo spring masuk
-        delay(750);  phase = 2   // teks slide up
-        delay(600);  phase = 3   // loading bar gelombang mulai
-        delay(2600); phase = 4   // fade out
+        delay(150);  phase = 1
+        delay(900);  phase = 2
+        delay(500);  phase = 3
+        delay(400);  phase = 4
+        delay(2400); phase = 5
         delay(460);  onSplashFinished()
     }
 
-    // ── Root ──────────────────────────────────────────────────────────────────
+    // ── UI ────────────────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -195,184 +175,223 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to BgTop,
-                        0.45f to BgMid,
-                        1.00f to BgBot
+                        0.00f to BgDeep,
+                        0.35f to BgMid,
+                        0.65f to BgAccent,
+                        1.00f to BgMid
                     )
                 )
             ),
         contentAlignment = Alignment.Center
     ) {
 
-        // ── Dekorasi glow blob (latar) ────────────────────────────────────
-        // Blob kiri atas
+        // Radial overlay subtle
         Box(
             modifier = Modifier
-                .offset(x = (-60).dp, y = (-180).dp)
-                .size(280.dp)
-                .scale(blobPulse)
+                .fillMaxSize()
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF1A5FA0).copy(alpha = 0.35f),
-                            Color.Transparent
-                        )
-                    ),
+                        colors = listOf(Color(0x18004080), Color.Transparent),
+                        radius = 1400f
+                    )
+                )
+        )
+
+        // Ambient glow kiri atas
+        Box(
+            modifier = Modifier
+                .size(380.dp)
+                .offset(x = (-100).dp, y = (-200).dp)
+                .blur(110.dp)
+                .background(
+                    Brush.radialGradient(listOf(Color(0x22003A70), Color.Transparent)),
                     CircleShape
                 )
         )
-        // Blob kanan bawah
+
+        // Ambient glow kanan bawah
         Box(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 40.dp, y = (-80).dp)
-                .size(220.dp)
-                .scale(1.1f - (blobPulse - 0.7f))
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF0B4D8A).copy(alpha = 0.28f),
-                            Color.Transparent
-                        )
-                    ),
-                    CircleShape
-                )
-        )
-        // Blob tengah besar (radius lebar, sangat transparan)
-        Box(
-            modifier = Modifier
-                .offset(y = 60.dp)
                 .size(320.dp)
-                .alpha(0.10f)
+                .offset(x = 110.dp, y = 240.dp)
+                .scale(1.15f - (blobPulse - 0.88f))
+                .blur(100.dp)
                 .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF3AB4E8), Color.Transparent)
-                    ),
+                    Brush.radialGradient(listOf(Color(0x1800C8F0), Color.Transparent)),
                     CircleShape
                 )
         )
 
-        // ── Konten utama ──────────────────────────────────────────────────
-        Column(
-            modifier            = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.weight(1.3f))
+        // Accent gold blob kecil
+        Box(
+            modifier = Modifier
+                .size(180.dp)
+                .offset(x = 130.dp, y = (-270).dp)
+                .blur(70.dp)
+                .background(
+                    Brush.radialGradient(listOf(Color(0x18FFD166), Color.Transparent)),
+                    CircleShape
+                )
+        )
 
-            // ── Logo ──────────────────────────────────────────────────────
+        // Partikel bintang
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            particles.forEach { p ->
+                val py = sin(particlePhase + p.speedOffset) * 10f
+                val px = cos(particlePhase * 0.7f + p.speedOffset) * 5f
+                drawCircle(
+                    color  = (if (p.isGold) Gold else Cyan).copy(alpha = p.alpha * 0.75f),
+                    radius = p.size * density / 2f,
+                    center = Offset(p.x * size.width + px * density, p.y * size.height + py * density)
+                )
+            }
+        }
+
+        // ── Konten ────────────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+
+            // Spacer atas lebih kecil → konten sedikit ke atas dari center
+            Spacer(Modifier.weight(0.65f))
+
+            // ── Maskot ────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .scale(logoScale)
-                    .alpha(logoAlpha)
-                    .offset(y = floatY.dp),
+                    .size(260.dp)
+                    .graphicsLayer {
+                        scaleX       = mascotScale
+                        scaleY       = mascotScale
+                        alpha        = mascotAlpha
+                        translationY = floatY
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                // Ring luar paling besar: frosted glass (putih sangat transparan)
+                // Aura luar halus
                 Box(
                     modifier = Modifier
-                        .size(220.dp)
+                        .size(260.dp)
+                        .blur(55.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Cyan.copy(alpha = 0.20f),
+                                    0.5f to Cyan.copy(alpha = 0.07f),
+                                    1.0f to Color.Transparent
+                                )
+                            ),
+                            CircleShape
+                        )
+                )
+
+                // Lingkaran kaca frosted
+                Box(
+                    modifier = Modifier
+                        .size(212.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color(0x2C005080),
+                                    0.55f to Color(0x16003060),
+                                    1.0f to Color(0x0A001830)
+                                )
+                            ),
+                            CircleShape
+                        )
+                )
+
+                // Ring berputar luar
+                Box(
+                    modifier = Modifier
+                        .size(216.dp)
                         .graphicsLayer { rotationZ = ringRot }
                         .background(
                             Brush.sweepGradient(
-                                colors = listOf(
-                                    GlassRing,
-                                    Color(0x00FFFFFF),
-                                    GlassRing.copy(alpha = 0.08f),
-                                    Color(0x00FFFFFF),
-                                    GlassRing
-                                )
-                            ),
-                            CircleShape
-                        )
-                )
-
-                // Ring glass statis
-                Box(
-                    modifier = Modifier
-                        .size(204.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0x22FFFFFF),
-                                    Color(0x08FFFFFF)
-                                )
-                            ),
-                            CircleShape
-                        )
-                )
-
-                // Lingkaran biru muda (outer circle drop)
-                Box(
-                    modifier = Modifier
-                        .size(164.dp)
-                        .scale(pulseScale)
-                        .background(
-                            Brush.verticalGradient(
                                 listOf(
-                                    Color(0xFF7ECFF0),
-                                    Color(0xFF4EB8DE)
+                                    Color.Transparent,
+                                    Cyan.copy(alpha = 0.16f),
+                                    Color.Transparent,
+                                    Gold.copy(alpha = 0.10f),
+                                    Color.Transparent
                                 )
                             ),
                             CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Lingkaran navy tengah
-                    Box(
-                        modifier = Modifier
-                            .size(116.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0xFF0D2A5C), Color(0xFF071530))
-                                ),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Water drop icon (SVG-like dengan Canvas bisa diganti asset)
-                        Text(
-                            text     = "💧",
-                            fontSize = 46.sp
                         )
-                    }
-                }
+                )
 
-                // Highlight putih kecil di kiri atas (efek glossy)
+                // Ring dalam counter-rotate
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .offset(x = (-42).dp, y = (-46).dp)
-                        .alpha(0.55f)
+                        .size(198.dp)
+                        .graphicsLayer { rotationZ = -ringRot * 0.5f }
                         .background(
-                            Brush.radialGradient(
-                                listOf(Color.White, Color.Transparent)
+                            Brush.sweepGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    Gold.copy(alpha = 0.09f),
+                                    Color.Transparent,
+                                    Cyan.copy(alpha = 0.07f),
+                                    Color.Transparent
+                                )
                             ),
                             CircleShape
                         )
+                )
+
+                // Ground glow bawah maskot
+                Box(
+                    modifier = Modifier
+                        .size(110.dp)
+                        .offset(y = 55.dp)
+                        .blur(28.dp)
+                        .graphicsLayer { alpha = glowPulse * 0.65f }
+                        .background(
+                            Brush.radialGradient(listOf(Cyan.copy(alpha = 0.45f), Color.Transparent)),
+                            CircleShape
+                        )
+                )
+
+                // ── Gambar maskot ─────────────────────────────────────────
+                // res/drawable/mascot_drinkup.png — PNG transparan, tubuh lengkap
+                Image(
+                    painter            = painterResource(R.drawable.mascot_drinkup),
+                    contentDescription = "DrinkUp Mascot",
+                    contentScale       = ContentScale.Fit,
+                    modifier           = Modifier
+                        .size(192.dp)   // ← cukup besar agar nyata dalam lingkaran
+                        .graphicsLayer {
+                            rotationZ       = if (isWaving) waveRot * 0.42f else 0f
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        }
                 )
             }
 
-            Spacer(Modifier.height(40.dp))
+            // Gap maskot → teks: rapat & proporsional
+            Spacer(Modifier.height(22.dp))
 
-            // ── Nama App ──────────────────────────────────────────────────
+            // ── DrinkUp ───────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .alpha(textAlpha)
-                    .offset(y = textSlide.dp)
+                    .offset(y = textSlide.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Shadow/glow teks
                 Text(
-                    text      = "DrinkUp",
-                    fontSize  = 52.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontStyle = FontStyle.Italic,
-                    color     = Color(0xFF3AB4E8).copy(alpha = 0.4f),
-                    modifier  = Modifier.offset(x = 2.dp, y = 4.dp)
+                    text       = "DrinkUp",
+                    fontSize   = 54.sp,
+                    fontWeight = FontWeight.Black,
+                    fontStyle  = FontStyle.Italic,
+                    color      = Cyan.copy(alpha = 0.32f),
+                    modifier   = Modifier.offset(x = 0.dp, y = 5.dp).blur(10.dp)
                 )
                 Text(
                     text          = "DrinkUp",
-                    fontSize      = 52.sp,
-                    fontWeight    = FontWeight.ExtraBold,
+                    fontSize      = 54.sp,
+                    fontWeight    = FontWeight.Black,
                     fontStyle     = FontStyle.Italic,
                     color         = TextWhite,
                     letterSpacing = 0.5.sp
@@ -382,42 +401,81 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             Spacer(Modifier.height(10.dp))
 
             // ── Tagline ───────────────────────────────────────────────────
-            Box(
+            Row(
                 modifier = Modifier
                     .alpha(textAlpha)
-                    .offset(y = textSlide.dp)
+                    .offset(y = textSlide.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .width(32.dp).height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(listOf(Color.Transparent, Gold.copy(alpha = 0.60f)))
+                        )
+                )
                 Text(
                     text          = "MULAI HARIMU DENGAN SEHAT",
-                    fontSize      = 12.sp,
+                    fontSize      = 10.sp,
                     fontWeight    = FontWeight.SemiBold,
                     color         = TextSub,
-                    letterSpacing = 3.sp,
+                    letterSpacing = 2.5.sp,
                     textAlign     = TextAlign.Center
+                )
+                Box(
+                    modifier = Modifier
+                        .width(32.dp).height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(listOf(Gold.copy(alpha = 0.60f), Color.Transparent))
+                        )
                 )
             }
 
+            // Spacer bawah push loading ke bawah layar
             Spacer(Modifier.weight(1f))
 
-            // ── Loading bar section ───────────────────────────────────────
+            // ── Loading ───────────────────────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .alpha(bottomAlpha)
-                    .padding(horizontal = 48.dp)
-                    .padding(bottom = 56.dp),
+                    .padding(bottom = 48.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                // Wave loading bar
+                // Dots bouncing
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    modifier              = Modifier.padding(bottom = 14.dp)
+                ) {
+                    repeat(3) { idx ->
+                        val dotBounce by inf.animateFloat(
+                            initialValue  = 0f, targetValue = -5f,
+                            animationSpec = infiniteRepeatable(
+                                tween(380, delayMillis = idx * 120, easing = FastOutSlowInEasing),
+                                RepeatMode.Reverse
+                            ),
+                            label = "dot$idx"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .offset(y = dotBounce.dp)
+                                .background(if (idx == 1) Gold else CyanSoft, CircleShape)
+                        )
+                    }
+                }
+
+                // Bar progress
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(5.dp)
+                        .height(3.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(TrackColor)
+                        .background(Color(0x18FFFFFF))
                 ) {
-                    // Progress utama dengan efek wave di ujung
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
@@ -425,11 +483,10 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                             .clip(RoundedCornerShape(50))
                             .background(
                                 Brush.horizontalGradient(
-                                    listOf(WaveBar2, WaveBar, Color(0xFF8AE9FF))
+                                    listOf(Color(0xFF003A70), Cyan, Color(0xFFB8F0FF))
                                 )
                             )
                     ) {
-                        // Shimmer sweep di atas bar
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -437,41 +494,24 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                                     Brush.linearGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.White.copy(alpha = 0.55f),
+                                            Color.White.copy(alpha = 0.50f),
                                             Color.Transparent
                                         ),
                                         start = Offset(shimmer * 400f - 60f, 0f),
-                                        end   = Offset(shimmer * 400f + 60f, 10f)
+                                        end   = Offset(shimmer * 400f + 60f, 8f)
                                     )
                                 )
                         )
                     }
-
-                    // "Kepala gelombang" — bulat bergelombang di ujung progress
-                    if (barProgress > 0.01f && barProgress < 0.98f) {
-                        val waveAmp = (Math.sin(wavePhase.toDouble()) * 2.5f).toFloat()
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .fillMaxHeight()
-                                .fillMaxWidth(barProgress)
-                                .wrapContentWidth(Alignment.End)
-                                .offset(y = waveAmp.dp)
-                                .size(9.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFBBF0FF))
-                        )
-                    }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
-                // Label
                 Text(
                     text          = dotsText,
                     fontSize      = 9.sp,
                     fontWeight    = FontWeight.Medium,
-                    color         = TextSub,
+                    color         = TextSub.copy(alpha = 0.75f),
                     letterSpacing = 2.sp,
                     textAlign     = TextAlign.Center
                 )
@@ -479,3 +519,16 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
         }
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CARA MENYIAPKAN ASSET MASKOT:
+// ──────────────────────────────────────────────────────────────────────────────
+// 1. Simpan gambar maskot lengkap (PNG transparan) di:
+//       res/drawable/mascot_drinkup.png
+//
+// 2. Animasi wave = rotasi seluruh maskot (waveRot * 0.42f).
+//    Sesuaikan nilai 0.42f untuk intensitas goyang.
+//
+// 3. Untuk animasi lebih canggih gunakan Lottie:
+//    implementation("com.airbnb.android:lottie-compose:6.4.0")
+// ──────────────────────────────────────────────────────────────────────────────

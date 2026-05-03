@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import androidx.core.app.NotificationCompat
 
 class AlarmService : Service() {
@@ -19,24 +20,52 @@ class AlarmService : Service() {
 
         @Volatile
         var isRunning = false
+
+        @Volatile
+        private var lastStartTime = 0L
+
+        @Volatile
+        private var isStopping = false
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
-        if (intent?.action == "STOP") {
-            stopAlarm()
+        val action = intent?.action
+        Log.e("DRINKUP_DEBUG", "SERVICE onStartCommand - startId=$startId action=$action isRunning=$isRunning time=${System.currentTimeMillis()}")
+
+        // ✅ FIX: STOP hanya dari internal service call (startService dari StopAlarmReceiver)
+        // Vivo tidak bisa auto-fire ini karena tombol notifikasi sekarang pakai BroadcastReceiver
+        if (action == "STOP") {
+            if (isRunning) {
+                Log.e("DRINKUP_DEBUG", "STOP action received - stopping alarm")
+                stopAlarm()
+            } else {
+                Log.e("DRINKUP_DEBUG", "STOP action ignored - not running")
+            }
             return START_NOT_STICKY
         }
+
+        synchronized(this) {
+            val now = System.currentTimeMillis()
+
+            if (isRunning) {
+                Log.e("DRINKUP_DEBUG", "SERVICE IGNORED - already running, startId=$startId")
+                return START_NOT_STICKY
+            }
+
+            if (now - lastStartTime < 2000) {
+                Log.e("DRINKUP_DEBUG", "SERVICE BLOCKED - too soon, startId=$startId")
+                return START_NOT_STICKY
+            }
+
+            isRunning     = true
+            isStopping    = false
+            lastStartTime = now
+        }
+
+        Log.e("DRINKUP_DEBUG", "SERVICE STARTED - playing alarm")
 
         startForeground(1, buildNotification())
-
-        if (isRunning || activeMediaPlayer?.isPlaying == true) {
-            stopSelf(startId)
-            return START_NOT_STICKY
-        }
-
-        isRunning = true
-
         startVibration()
         startAudio()
 
@@ -49,25 +78,36 @@ class AlarmService : Service() {
 
         try {
             val afd = resources.openRawResourceFd(R.raw.drink_reminder)
-            activeMediaPlayer = MediaPlayer().apply {
-                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                afd.close()
 
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
+            val player = MediaPlayer()
+            activeMediaPlayer = player
 
-                isLooping = true
-                prepareAsync()
+            player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            afd.close()
 
-                setOnPreparedListener {
-                    if (isRunning) it.start()
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+
+            player.isLooping = true
+
+            player.setOnPreparedListener {
+                if (isRunning && activeMediaPlayer === player) {
+                    Log.e("DRINKUP_DEBUG", "AUDIO STARTED")
+                    it.start()
+                } else {
+                    Log.e("DRINKUP_DEBUG", "AUDIO BLOCKED - instance mismatch or not running")
+                    it.release()
                 }
             }
+
+            player.prepareAsync()
+
         } catch (e: Exception) {
+            Log.e("DRINKUP_DEBUG", "AUDIO ERROR: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -86,11 +126,13 @@ class AlarmService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val stopIntent = Intent(this, AlarmService::class.java).apply {
-            action = "STOP"
+        // ✅ FIX UTAMA: Tombol STOP pakai BroadcastReceiver, BUKAN PendingIntent service
+        // Vivo tidak bisa auto-fire BroadcastReceiver seperti dia auto-fire service intent
+        val stopIntent = Intent(this, StopAlarmReceiver::class.java).apply {
+            action = "STOP_ALARM"
         }
 
-        val stopPendingIntent = PendingIntent.getService(
+        val stopPendingIntent = PendingIntent.getBroadcast(
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -119,7 +161,16 @@ class AlarmService : Service() {
     }
 
     private fun stopAlarm() {
-        isRunning = false
+        synchronized(this) {
+            if (isStopping) {
+                Log.e("DRINKUP_DEBUG", "SERVICE STOP SKIPPED - already stopping")
+                return
+            }
+            isStopping = true
+            isRunning  = false
+        }
+
+        Log.e("DRINKUP_DEBUG", "SERVICE STOPPED")
 
         activeMediaPlayer?.release()
         activeMediaPlayer = null
@@ -133,7 +184,16 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopAlarm()
+        Log.e("DRINKUP_DEBUG", "SERVICE onDestroy called")
+
+        if (!isStopping) {
+            activeMediaPlayer?.release()
+            activeMediaPlayer = null
+            activeVibrator?.cancel()
+            activeVibrator = null
+            isRunning  = false
+            isStopping = true
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

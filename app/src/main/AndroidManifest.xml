@@ -2,25 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Notifikasi (wajib Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Exact alarm (wajib untuk setExactAndAllowWhileIdle) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-
-    <!-- USE_EXACT_ALARM: alternatif SCHEDULE_EXACT_ALARM untuk Android 13+ -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-
-    <!-- Supaya alarm tetap jalan saat layar mati -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- Supaya alarm di-reschedule setelah HP reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- Getaran saat alarm berbunyi -->
     <uses-permission android:name="android.permission.VIBRATE" />
-
-    <!-- ✅ FIX 1: Wajib ada agar startForegroundService() tidak diam-diam gagal -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
@@ -34,12 +21,21 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DrinkUp">
 
+        <!-- ✅ StopAlarmReceiver: dipanggil tombol STOP di notifikasi -->
+        <receiver
+            android:name=".StopAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="STOP_ALARM" />
+            </intent-filter>
+        </receiver>
+
         <!-- ReminderReceiver: dipanggil AlarmManager saat alarm berbunyi -->
         <receiver
             android:name=".ReminderReceiver"
             android:exported="true" />
 
-        <!-- AlarmService pakai mediaPlayback (untuk bunyi alarm) -->
+        <!-- AlarmService: foreground service untuk bunyi alarm -->
         <service
             android:name=".AlarmService"
             android:exported="false"

@@ -5,8 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -92,34 +90,22 @@ class MainActivity : ComponentActivity() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.deleteNotificationChannel("drink_channel")
-            manager.deleteNotificationChannel("alarm_channel")
 
-            val soundUri: Uri = try {
-                Uri.parse("android.resource://${packageName}/${R.raw.drink_reminder}")
-            } catch (e: Exception) {
-                android.media.RingtoneManager.getDefaultUri(
-                    android.media.RingtoneManager.TYPE_ALARM
-                )
+            // ✅ FIX: Tidak delete/recreate channel saat app dibuka.
+            // Delete channel lama hanya jika belum ada, supaya tidak restart service.
+            if (manager.getNotificationChannel("alarm_channel") == null) {
+                val channel = NotificationChannel(
+                    "alarm_channel",
+                    "Alarm Reminder",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description          = "Reminder minum air harian DrinkUp"
+                    enableVibration(false)  // ✅ FIX: vibration dihandle AlarmService, bukan channel
+                    setSound(null, null)    // ✅ FIX: HAPUS sound dari channel — MediaPlayer yang handle audio
+                    lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                }
+                manager.createNotificationChannel(channel)
             }
-
-            val audioAttr = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-
-            val channel = NotificationChannel(
-                "alarm_channel",
-                "Alarm Reminder",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description          = "Reminder minum air harian DrinkUp"
-                enableVibration(true)
-                vibrationPattern     = longArrayOf(0, 800, 400)
-                setSound(soundUri, audioAttr)
-                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-            }
-            manager.createNotificationChannel(channel)
         }
     }
 
@@ -227,7 +213,7 @@ fun DrinkUpApp(
     ) {
         // ── Scaffold konten utama ─────────────────────────────────────────────
         Scaffold(
-            containerColor = Color(0xFF0A1F5C),  // navy deep — tidak ada batas putih
+            containerColor = Color(0xFF0A1F5C),
             topBar = {
                 if (showHamburger) {
                     DrinkUpTopBar(
@@ -453,7 +439,7 @@ fun DrinkUpTopBar(
     onHamburgerClick : () -> Unit
 ) {
     val title = when (currentRoute) {
-        Routes.DASHBOARD -> ""          // Dashboard tidak pakai title (sudah ada greeting)
+        Routes.DASHBOARD -> ""
         Routes.STATISTIK -> "Statistik"
         Routes.REMINDER  -> "Reminder"
         Routes.SETTINGS  -> "Pengaturan"
@@ -463,10 +449,9 @@ fun DrinkUpTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0A1F5C))  // navy deep
+            .background(Color(0xFF0A1F5C))
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Hamburger button di kiri
         Box(
             modifier = Modifier
                 .size(42.dp)
@@ -484,7 +469,6 @@ fun DrinkUpTopBar(
             )
         }
 
-        // Title di tengah (hanya untuk halaman non-dashboard)
         if (title.isNotEmpty()) {
             Text(
                 title,
@@ -496,7 +480,6 @@ fun DrinkUpTopBar(
             )
         }
 
-        // Logo / brand di kanan (opsional)
         Text(
             "💧 DrinkUp",
             style    = MaterialTheme.typography.labelMedium.copy(
@@ -531,7 +514,6 @@ fun DrinkUpDrawer(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // ── Header drawer ─────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -542,7 +524,6 @@ fun DrinkUpDrawer(
                     )
                     .padding(horizontal = 24.dp, vertical = 36.dp)
             ) {
-                // Tombol close (X) di kanan atas
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -556,7 +537,6 @@ fun DrinkUpDrawer(
                 }
 
                 Column {
-                    // Avatar
                     Box(
                         modifier = Modifier
                             .size(70.dp)
@@ -598,7 +578,6 @@ fun DrinkUpDrawer(
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Nav items ─────────────────────────────────────────────────────
             navItems.forEach { item ->
                 val isActive = currentRoute == item.route
                 Box(
@@ -649,7 +628,6 @@ fun DrinkUpDrawer(
                 }
             }
 
-            // ── Divider ───────────────────────────────────────────────────────
             Spacer(Modifier.height(12.dp))
             HorizontalDivider(
                 modifier  = Modifier.padding(horizontal = 24.dp),
@@ -658,7 +636,6 @@ fun DrinkUpDrawer(
             )
             Spacer(Modifier.height(8.dp))
 
-            // ── Info version ──────────────────────────────────────────────────
             Row(
                 modifier          = Modifier
                     .fillMaxWidth()
@@ -687,7 +664,6 @@ fun DrinkUpDrawer(
 
             Spacer(Modifier.weight(1f))
 
-            // ── Logout button di bawah ────────────────────────────────────────
             HorizontalDivider(
                 modifier  = Modifier.padding(horizontal = 24.dp),
                 color     = DrawerDivider,

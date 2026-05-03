@@ -75,6 +75,7 @@ fun ReminderScreen() {
 
     var reminders   by remember { mutableStateOf<List<ReminderItem>>(emptyList()) }
     var isLoading   by remember { mutableStateOf(true) }
+    var isSaving    by remember { mutableStateOf(false) }
 
     var showAddSheet    by remember { mutableStateOf(false) }
     var showPermWarning by remember { mutableStateOf(false) }
@@ -112,11 +113,18 @@ fun ReminderScreen() {
             else showPermWarning = true
             return
         }
+
+        val reminderId = item.id.hashCode()
+
         remindersCollection().document(item.id).update("isActive", on)
+
         if (on) {
+            // 🔥 pastikan tidak ada sisa alarm lama
+            AlarmHelper.cancelReminder(context, reminderId)
+
             AlarmHelper.scheduleReminder(
                 context    = context,
-                reminderId = item.id.hashCode(),
+                reminderId = reminderId,
                 hour       = item.hour,
                 minute     = item.minute,
                 days       = item.days,
@@ -124,21 +132,26 @@ fun ReminderScreen() {
                 vibration  = item.vibration
             )
         } else {
-            AlarmHelper.cancelReminder(context, item.id.hashCode(), item.days)
+            AlarmHelper.cancelReminder(context, reminderId)
         }
     }
 
     fun addReminder(hour: Int, minute: Int, label: String, days: List<String>, vibration: Boolean) {
+        if (isSaving) return
+        isSaving = true
+
         val newItem = ReminderItem(
             id = "", label = label, hour = hour, minute = minute,
             days = days, isActive = true, vibration = vibration
         )
+
         remindersCollection().add(newItem.toMap())
             .addOnSuccessListener { docRef ->
                 val reminderId = docRef.id.hashCode()
-                // ✅ Cancel dulu sebelum schedule — pastikan tidak ada
-                // sisa alarm lama dengan reminderId yang sama di AlarmManager
-                AlarmHelper.cancelReminder(context, reminderId, days)
+
+                // 🔥 cancel semua kemungkinan alarm lama
+                AlarmHelper.cancelReminder(context, reminderId)
+
                 AlarmHelper.scheduleReminder(
                     context    = context,
                     reminderId = reminderId,
@@ -148,11 +161,16 @@ fun ReminderScreen() {
                     label      = label,
                     vibration  = vibration
                 )
+
+                isSaving = false
+            }
+            .addOnFailureListener {
+                isSaving = false
             }
     }
 
     fun deleteReminder(item: ReminderItem) {
-        AlarmHelper.cancelReminder(context, item.id.hashCode(), item.days)
+        AlarmHelper.cancelReminder(context, item.id.hashCode())
         remindersCollection().document(item.id).delete()
     }
 

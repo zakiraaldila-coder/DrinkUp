@@ -17,80 +17,56 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// ─────────────────────────────────────────
-// LIGHT COLOR SCHEME
-// ─────────────────────────────────────────
-private val LightColorScheme = lightColorScheme(
-    primary            = Navy800,
-    onPrimary          = White,
-    primaryContainer   = Navy100,
-    onPrimaryContainer = Navy900,
-
-    secondary            = Teal500,
-    onSecondary          = White,
-    secondaryContainer   = Teal50,
-    onSecondaryContainer = Teal600,
-
-    tertiary            = WaterMid,
-    onTertiary          = White,
-    tertiaryContainer   = WaterBg,
-    onTertiaryContainer = WaterDeep,
-
-    background   = BgPage,
-    onBackground = TextPrimary,
-    surface      = BgSurface,
-    onSurface    = TextPrimary,
-
-    surfaceVariant   = BgSurfaceAlt,
-    onSurfaceVariant = TextSecondary,
-
-    outline        = BorderLight,
-    outlineVariant = BorderMedium,
-
-    error            = Error500,
-    onError          = White,
-    errorContainer   = Error100,
-    onErrorContainer = Error500,
-
-    scrim = Color(0x52000000),
-)
+// Warna khusus tema navy app
+private val AppNavyDeep    = Color(0xFF0A1F5C)
+private val AppNavyMid     = Color(0xFF0D3B8E)
+private val AppNavyCard    = Color(0xFF112870)
+private val AppNavyBorder  = Color(0xFF1E3FA0)
+private val AppWaterBlue   = Color(0xFF4FC3F7)
+private val AppWaterMid    = Color(0xFF29B6F6)
+private val AppTextPrimary = Color(0xFFFFFFFF)
+private val AppTextSub     = Color(0xFFB0C4E8)
+private val AppOrange      = Color(0xFFFF6D00)
 
 // ─────────────────────────────────────────
-// DARK COLOR SCHEME
+// NAVY COLOR SCHEME (dipakai untuk kedua mode agar konsisten)
 // ─────────────────────────────────────────
-private val DarkColorScheme = darkColorScheme(
-    primary            = Navy200,
-    onPrimary          = Navy900,
-    primaryContainer   = Navy700,
-    onPrimaryContainer = Navy100,
+private val NavyColorScheme = darkColorScheme(
+    primary              = AppWaterBlue,
+    onPrimary            = AppNavyDeep,
+    primaryContainer     = AppNavyMid,
+    onPrimaryContainer   = AppTextPrimary,
 
-    secondary            = Teal300,
-    onSecondary          = Teal600,
-    secondaryContainer   = Color(0xFF0F4A3F),
-    onSecondaryContainer = Teal200,
+    secondary            = AppWaterMid,
+    onSecondary          = AppNavyDeep,
+    secondaryContainer   = AppNavyCard,
+    onSecondaryContainer = AppTextPrimary,
 
-    tertiary            = WaterLight,
-    onTertiary          = WaterDeep,
-    tertiaryContainer   = Color(0xFF0D3A52),
-    onTertiaryContainer = WaterSurface,
+    tertiary             = AppOrange,
+    onTertiary           = Color.White,
+    tertiaryContainer    = Color(0xFF1A3A7A),
+    onTertiaryContainer  = AppTextPrimary,
 
-    background   = DarkBgPage,
-    onBackground = White,
-    surface      = DarkBgSurface,
-    onSurface    = White,
+    // Background utama — navy gelap
+    background           = AppNavyDeep,
+    onBackground         = AppTextPrimary,
 
-    surfaceVariant   = DarkBgSurfaceAlt,
-    onSurfaceVariant = Neutral300,
+    // Surface card
+    surface              = AppNavyCard,
+    onSurface            = AppTextPrimary,
 
-    outline        = Color(0xFF2E4A6E),
-    outlineVariant = Color(0xFF1E3A6E),
+    surfaceVariant       = Color(0xFF0D3B8E),
+    onSurfaceVariant     = AppTextSub,
 
-    error            = Color(0xFFF87171),
-    onError          = Color(0xFF7F1D1D),
-    errorContainer   = Color(0xFF991B1B),
-    onErrorContainer = Color(0xFFFECACA),
+    outline              = AppNavyBorder,
+    outlineVariant       = Color(0xFF1A3580),
 
-    scrim = Color(0x73000000),
+    error                = Color(0xFFF87171),
+    onError              = Color(0xFF7F1D1D),
+    errorContainer       = Color(0xFF991B1B),
+    onErrorContainer     = Color(0xFFFECACA),
+
+    scrim                = Color(0x73000000),
 )
 
 // ─────────────────────────────────────────
@@ -102,22 +78,18 @@ fun DrinkUpTheme(
     dynamicColor : Boolean = false,
     content      : @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else      -> LightColorScheme
-    }
+    // Selalu pakai NavyColorScheme agar konsisten dengan design
+    val colorScheme = NavyColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
+            // Status bar ikut warna navy
+            window.statusBarColor         = AppNavyDeep.toArgb()
+            window.navigationBarColor     = AppNavyDeep.toArgb()
             WindowCompat.getInsetsController(window, view)
-                .isAppearanceLightStatusBars = !darkTheme
+                .isAppearanceLightStatusBars = false  // icon status bar putih
         }
     }
 
@@ -130,7 +102,6 @@ fun DrinkUpTheme(
 
 // ─────────────────────────────────────────
 // CUSTOM COLORS EXTENSION
-// Pakai: MaterialTheme.drinkUpColors.waterMid
 // ─────────────────────────────────────────
 data class DrinkUpColors(
     val waterDeep   : Color = WaterDeep,

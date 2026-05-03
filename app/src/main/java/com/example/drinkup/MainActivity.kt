@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,9 +45,16 @@ import androidx.navigation.compose.rememberNavController
 import com.example.drinkup.ui.theme.DrinkUpTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.launch
 
-private val MintPrimary = Color(0xFF4ECDC4)
-private val TextGray    = Color(0xFF9E9E9E)
+// ── Warna nav drawer (sesuai tema navy) ───────────────────────────────────────
+private val DrawerBg       = Color(0xFF0D2B6B)
+private val DrawerSurface  = Color(0xFF112870)
+private val DrawerBorder   = Color(0xFF1E3FA0)
+private val DrawerText     = Color(0xFFFFFFFF)
+private val DrawerSubText  = Color(0xFFB0C4E8)
+private val DrawerActive   = Color(0xFF4FC3F7)
+private val DrawerDivider  = Color(0xFF1E3FA0)
 
 object Routes {
     const val SPLASH           = "splash"
@@ -70,7 +78,6 @@ data class NavItem(val route: String, val icon: ImageVector, val label: String)
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
 
-    // ── Runtime permission launcher ────────────────────────────────────────
     private val requestNotifPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (!isGranted) {
@@ -82,12 +89,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    // ── Buat Notification Channel ──────────────────────────────────────────
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            // ✅ Hapus channel lama agar channel baru dengan USAGE_ALARM dibuat ulang
             manager.deleteNotificationChannel("drink_channel")
             manager.deleteNotificationChannel("alarm_channel")
 
@@ -99,7 +103,6 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            // ✅ FIX: Ganti USAGE_NOTIFICATION → USAGE_ALARM agar sound & vibration bisa loop
             val audioAttr = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -116,13 +119,10 @@ class MainActivity : ComponentActivity() {
                 setSound(soundUri, audioAttr)
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
-
             manager.createNotificationChannel(channel)
         }
     }
 
-    // ── Minta permission notifikasi (Android 13+) ──────────────────────────
-    // ✅ FIX: Sebelumnya tidak pernah benar-benar request permission
     private fun askNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
@@ -138,7 +138,6 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
-
         createNotificationChannel()
         askNotificationPermission()
 
@@ -152,18 +151,21 @@ class MainActivity : ComponentActivity() {
 }
 
 // ── App Composable ─────────────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DrinkUpApp(
     authViewModel  : AuthViewModel,
     themeViewModel : ThemeViewModel
 ) {
-    val navController   = rememberNavController()
-    var currentRoute    by remember { mutableStateOf(Routes.DASHBOARD) }
-    var showNavBar      by remember { mutableStateOf(false) }
-    val intakeViewModel : IntakeViewModel = viewModel()
+    val navController    = rememberNavController()
+    var currentRoute     by remember { mutableStateOf(Routes.DASHBOARD) }
+    var showDrawer       by remember { mutableStateOf(false) }
+    var showHamburger    by remember { mutableStateOf(false) }
+    val intakeViewModel  : IntakeViewModel = viewModel()
+    val drawerState      = rememberDrawerState(DrawerValue.Closed)
+    val scope            = rememberCoroutineScope()
 
-    var splashDone  by remember { mutableStateOf(false) }
-    var isLoggedIn  by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
 
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { fa ->
@@ -176,318 +178,554 @@ fun DrinkUpApp(
     val navItems = listOf(
         NavItem(Routes.DASHBOARD, Icons.Rounded.Home,          "Home"),
         NavItem(Routes.STATISTIK, Icons.Rounded.BarChart,      "Statistik"),
-        NavItem(Routes.REMINDER,  Icons.Rounded.Notifications, "Reminder"),
-        NavItem(Routes.SETTINGS,  Icons.Rounded.Person,        "Settings"),
+        NavItem(Routes.REMINDER,  Icons.Rounded.Notifications, "Notifikasi"),
+        NavItem(Routes.SETTINGS,  Icons.Rounded.Settings,      "Pengaturan"),
     )
 
     fun goToDashboard() {
-        showNavBar   = true
-        currentRoute = Routes.DASHBOARD
+        showHamburger = true
+        currentRoute  = Routes.DASHBOARD
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) authViewModel.startListeningUser(uid)
         navController.navigate(Routes.DASHBOARD) { popUpTo(0) { inclusive = true } }
     }
 
     fun goToCompleteProfile() {
-        showNavBar   = false
-        currentRoute = Routes.COMPLETE_PROFILE
+        showHamburger = false
+        currentRoute  = Routes.COMPLETE_PROFILE
         navController.navigate(Routes.COMPLETE_PROFILE) { popUpTo(0) { inclusive = true } }
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            if (showNavBar) {
-                DrinkUpNavBar(
-                    items        = navItems,
-                    currentRoute = currentRoute,
-                    onItemClick  = { route -> currentRoute = route; navController.navigate(route) }
-                )
-            }
-        }
-    ) { innerPadding ->
+    // Tutup drawer saat navigasi
+    fun navigateTo(route: String) {
+        scope.launch { drawerState.close() }
+        currentRoute = route
+        navController.navigate(route)
+    }
 
-        NavHost(
-            navController    = navController,
-            startDestination = Routes.SPLASH,
-            modifier         = Modifier.padding(innerPadding)
-        ) {
-            composable(Routes.SPLASH) {
-                showNavBar = false
-                SplashScreen {
-                    splashDone = true
-                    val user = FirebaseAuth.getInstance().currentUser
-                    if (user != null) {
-                        authViewModel.startListeningUser(user.uid)
-                        showNavBar = true
-                        navController.navigate(Routes.DASHBOARD) {
-                            popUpTo(Routes.SPLASH) { inclusive = true }
-                        }
-                    } else {
-                        navController.navigate(Routes.WELCOME) {
-                            popUpTo(Routes.SPLASH) { inclusive = true }
+    // ── ModalNavigationDrawer wrapping semua konten ───────────────────────────
+    ModalNavigationDrawer(
+        drawerState   = drawerState,
+        gesturesEnabled = showHamburger,
+        drawerContent = {
+            DrinkUpDrawer(
+                navItems     = navItems,
+                currentRoute = currentRoute,
+                authViewModel = authViewModel,
+                onItemClick  = { route -> navigateTo(route) },
+                onLogout     = {
+                    scope.launch { drawerState.close() }
+                    authViewModel.logout()
+                    showHamburger = false
+                    navController.navigate(Routes.WELCOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onClose      = { scope.launch { drawerState.close() } }
+            )
+        }
+    ) {
+        // ── Scaffold konten utama ─────────────────────────────────────────────
+        Scaffold(
+            containerColor = Color(0xFF0A1F5C),  // navy deep — tidak ada batas putih
+            topBar = {
+                if (showHamburger) {
+                    DrinkUpTopBar(
+                        currentRoute = currentRoute,
+                        onHamburgerClick = { scope.launch { drawerState.open() } }
+                    )
+                }
+            }
+        ) { innerPadding ->
+            NavHost(
+                navController    = navController,
+                startDestination = Routes.SPLASH,
+                modifier         = Modifier.padding(innerPadding)
+            ) {
+                composable(Routes.SPLASH) {
+                    showHamburger = false
+                    SplashScreen {
+                        val user = FirebaseAuth.getInstance().currentUser
+                        if (user != null) {
+                            authViewModel.startListeningUser(user.uid)
+                            showHamburger = true
+                            navController.navigate(Routes.DASHBOARD) {
+                                popUpTo(Routes.SPLASH) { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(Routes.WELCOME) {
+                                popUpTo(Routes.SPLASH) { inclusive = true }
+                            }
                         }
                     }
                 }
-            }
 
-            composable(Routes.WELCOME) {
-                showNavBar = false
-                WelcomeScreen(
-                    onLoginClick    = { navController.navigate(Routes.LOGIN) },
-                    onRegisterClick = { navController.navigate(Routes.REGISTER) }
-                )
-            }
+                composable(Routes.WELCOME) {
+                    showHamburger = false
+                    WelcomeScreen(
+                        onLoginClick    = { navController.navigate(Routes.LOGIN) },
+                        onRegisterClick = { navController.navigate(Routes.REGISTER) }
+                    )
+                }
 
-            composable(Routes.LOGIN) {
-                showNavBar = false
-                LoginScreen(
-                    authViewModel     = authViewModel,
-                    initialTab        = "login",
-                    onLoginSuccess    = { goToDashboard() },
-                    onRegisterSuccess = { navController.navigate(Routes.LOGIN) },
-                    onGoogleNewUser   = { goToCompleteProfile() },
-                    onGoogleOldUser   = { goToDashboard() }
-                )
-            }
+                composable(Routes.LOGIN) {
+                    showHamburger = false
+                    LoginScreen(
+                        authViewModel     = authViewModel,
+                        initialTab        = "login",
+                        onLoginSuccess    = { goToDashboard() },
+                        onRegisterSuccess = { navController.navigate(Routes.LOGIN) },
+                        onGoogleNewUser   = { goToCompleteProfile() },
+                        onGoogleOldUser   = { goToDashboard() }
+                    )
+                }
 
-            composable(Routes.REGISTER) {
-                showNavBar = false
-                LoginScreen(
-                    authViewModel     = authViewModel,
-                    initialTab        = "register",
-                    onLoginSuccess    = { goToDashboard() },
-                    onRegisterSuccess = {
-                        navController.navigate(Routes.LOGIN) {
-                            popUpTo(Routes.REGISTER) { inclusive = true }
+                composable(Routes.REGISTER) {
+                    showHamburger = false
+                    LoginScreen(
+                        authViewModel     = authViewModel,
+                        initialTab        = "register",
+                        onLoginSuccess    = { goToDashboard() },
+                        onRegisterSuccess = {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(Routes.REGISTER) { inclusive = true }
+                            }
+                        },
+                        onGoogleNewUser   = { goToCompleteProfile() },
+                        onGoogleOldUser   = { goToDashboard() }
+                    )
+                }
+
+                composable(Routes.DASHBOARD) {
+                    showHamburger = true
+                    currentRoute  = Routes.DASHBOARD
+                    DashboardScreen(
+                        onShowTambah = {
+                            showHamburger = false
+                            currentRoute  = Routes.TAMBAH
+                            navController.navigate(Routes.TAMBAH)
+                        },
+                        onNavigateToWeeklyGoal = {
+                            showHamburger = false
+                            currentRoute  = Routes.WEEKLY_GOAL
+                            navController.navigate(Routes.WEEKLY_GOAL)
+                        },
+                        onNavigateToStreak = {
+                            showHamburger = false
+                            currentRoute  = Routes.STREAK
+                            navController.navigate(Routes.STREAK)
+                        },
+                        intakeViewModel = intakeViewModel
+                    )
+                }
+
+                composable(Routes.WEEKLY_GOAL) {
+                    showHamburger = false
+                    currentRoute  = Routes.WEEKLY_GOAL
+                    WeeklyGoalScreen(
+                        intakeViewModel = intakeViewModel,
+                        onBack = {
+                            showHamburger = true
+                            currentRoute  = Routes.DASHBOARD
+                            navController.popBackStack()
                         }
-                    },
-                    onGoogleNewUser   = { goToCompleteProfile() },
-                    onGoogleOldUser   = { goToDashboard() }
-                )
-            }
+                    )
+                }
 
-            composable(Routes.DASHBOARD) {
-                showNavBar   = true
-                currentRoute = Routes.DASHBOARD
-                DashboardScreen(
-                    onShowTambah = {
-                        showNavBar   = false
-                        currentRoute = Routes.TAMBAH
-                        navController.navigate(Routes.TAMBAH)
-                    },
-                    onNavigateToWeeklyGoal = {
-                        showNavBar   = false
-                        currentRoute = Routes.WEEKLY_GOAL
-                        navController.navigate(Routes.WEEKLY_GOAL)
-                    },
-                    onNavigateToStreak = {
-                        showNavBar   = false
-                        currentRoute = Routes.STREAK
-                        navController.navigate(Routes.STREAK)
-                    },
-                    intakeViewModel = intakeViewModel
-                )
-            }
-
-            composable(Routes.WEEKLY_GOAL) {
-                showNavBar   = false
-                currentRoute = Routes.WEEKLY_GOAL
-                WeeklyGoalScreen(
-                    intakeViewModel = intakeViewModel,
-                    onBack = {
-                        showNavBar   = true
-                        currentRoute = Routes.DASHBOARD
-                        navController.popBackStack()
-                    }
-                )
-            }
-
-            composable(Routes.STREAK) {
-                showNavBar   = false
-                currentRoute = Routes.STREAK
-                StreakScreen(
-                    intakeViewModel = intakeViewModel,
-                    onBack = {
-                        showNavBar   = true
-                        currentRoute = Routes.DASHBOARD
-                        navController.popBackStack()
-                    }
-                )
-            }
-
-            composable(Routes.STATISTIK) {
-                showNavBar   = true
-                currentRoute = Routes.STATISTIK
-                StatistikScreen(
-                    intakeViewModel = intakeViewModel,
-                    onReadMore      = {
-                        showNavBar   = false
-                        currentRoute = Routes.ARTICLE
-                        navController.navigate(Routes.ARTICLE)
-                    }
-                )
-            }
-
-            composable(Routes.REMINDER) {
-                showNavBar   = true
-                currentRoute = Routes.REMINDER
-                ReminderScreen()
-            }
-
-            composable(Routes.SETTINGS) {
-                showNavBar   = true
-                currentRoute = Routes.SETTINGS
-                SettingsScreen(
-                    themeViewModel = themeViewModel,
-                    onLogout = {
-                        authViewModel.logout()
-                        showNavBar = false
-                        navController.navigate(Routes.WELCOME) {
-                            popUpTo(0) { inclusive = true }
+                composable(Routes.STREAK) {
+                    showHamburger = false
+                    currentRoute  = Routes.STREAK
+                    StreakScreen(
+                        intakeViewModel = intakeViewModel,
+                        onBack = {
+                            showHamburger = true
+                            currentRoute  = Routes.DASHBOARD
+                            navController.popBackStack()
                         }
-                    },
-                    onNavigateToEditProfile = {
-                        navController.navigate(Routes.EDIT_PROFILE)
-                    }
-                )
-            }
+                    )
+                }
 
-            composable(Routes.TAMBAH) {
-                showNavBar   = false
-                currentRoute = Routes.TAMBAH
-                TambahScreen(
-                    onTambah = { amount ->
-                        intakeViewModel.addIntake(amount)
-                        showNavBar   = true
-                        currentRoute = Routes.DASHBOARD
-                        navController.navigate(Routes.DASHBOARD) {
-                            popUpTo(Routes.DASHBOARD) { inclusive = true }
+                composable(Routes.STATISTIK) {
+                    showHamburger = true
+                    currentRoute  = Routes.STATISTIK
+                    StatistikScreen(
+                        intakeViewModel = intakeViewModel,
+                        onReadMore      = {
+                            showHamburger = false
+                            currentRoute  = Routes.ARTICLE
+                            navController.navigate(Routes.ARTICLE)
                         }
-                    },
-                    onBatalkan = {
-                        showNavBar   = true
-                        currentRoute = Routes.DASHBOARD
-                        navController.navigate(Routes.DASHBOARD) {
-                            popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    )
+                }
+
+                composable(Routes.REMINDER) {
+                    showHamburger = true
+                    currentRoute  = Routes.REMINDER
+                    ReminderScreen()
+                }
+
+                composable(Routes.SETTINGS) {
+                    showHamburger = true
+                    currentRoute  = Routes.SETTINGS
+                    SettingsScreen(
+                        themeViewModel = themeViewModel,
+                        onLogout = {
+                            authViewModel.logout()
+                            showHamburger = false
+                            navController.navigate(Routes.WELCOME) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                        onNavigateToEditProfile = {
+                            navController.navigate(Routes.EDIT_PROFILE)
                         }
-                    }
-                )
-            }
+                    )
+                }
 
-            composable(Routes.EDIT_PROFILE) {
-                showNavBar   = false
-                currentRoute = Routes.EDIT_PROFILE
-                EditProfileScreen(
-                    onNavigateBack = {
-                        showNavBar   = true
-                        currentRoute = Routes.SETTINGS
-                        navController.popBackStack()
-                    }
-                )
-            }
+                composable(Routes.TAMBAH) {
+                    showHamburger = false
+                    currentRoute  = Routes.TAMBAH
+                    TambahScreen(
+                        onTambah = { amount ->
+                            intakeViewModel.addIntake(amount)
+                            showHamburger = true
+                            currentRoute  = Routes.DASHBOARD
+                            navController.navigate(Routes.DASHBOARD) {
+                                popUpTo(Routes.DASHBOARD) { inclusive = true }
+                            }
+                        },
+                        onBatalkan = {
+                            showHamburger = true
+                            currentRoute  = Routes.DASHBOARD
+                            navController.navigate(Routes.DASHBOARD) {
+                                popUpTo(Routes.DASHBOARD) { inclusive = true }
+                            }
+                        }
+                    )
+                }
 
-            composable(Routes.ARTICLE) {
-                showNavBar   = false
-                currentRoute = Routes.ARTICLE
-                ArticleScreen(
-                    onBack  = {
-                        showNavBar   = true
-                        currentRoute = Routes.STATISTIK
-                        navController.popBackStack()
-                    },
-                    onDrink = {
-                        showNavBar   = true
-                        currentRoute = Routes.TAMBAH
-                        navController.navigate(Routes.TAMBAH)
-                    }
-                )
-            }
+                composable(Routes.EDIT_PROFILE) {
+                    showHamburger = false
+                    currentRoute  = Routes.EDIT_PROFILE
+                    EditProfileScreen(
+                        onNavigateBack = {
+                            showHamburger = true
+                            currentRoute  = Routes.SETTINGS
+                            navController.popBackStack()
+                        }
+                    )
+                }
 
-            composable(Routes.COMPLETE_PROFILE) {
-                showNavBar   = false
-                currentRoute = Routes.COMPLETE_PROFILE
-                CompleteProfileScreen(
-                    authViewModel     = authViewModel,
-                    onProfileComplete = { goToDashboard() }
-                )
+                composable(Routes.ARTICLE) {
+                    showHamburger = false
+                    currentRoute  = Routes.ARTICLE
+                    ArticleScreen(
+                        onBack  = {
+                            showHamburger = true
+                            currentRoute  = Routes.STATISTIK
+                            navController.popBackStack()
+                        },
+                        onDrink = {
+                            showHamburger = false
+                            currentRoute  = Routes.TAMBAH
+                            navController.navigate(Routes.TAMBAH)
+                        }
+                    )
+                }
+
+                composable(Routes.COMPLETE_PROFILE) {
+                    showHamburger = false
+                    currentRoute  = Routes.COMPLETE_PROFILE
+                    CompleteProfileScreen(
+                        authViewModel     = authViewModel,
+                        onProfileComplete = { goToDashboard() }
+                    )
+                }
             }
         }
     }
 }
 
-// ── Bottom Navigation Bar ──────────────────────────────────────────────────────
+// ── Top Bar dengan Hamburger Button ───────────────────────────────────────────
 @Composable
-fun DrinkUpNavBar(
-    items        : List<NavItem>,
-    currentRoute : String,
-    onItemClick  : (String) -> Unit
+fun DrinkUpTopBar(
+    currentRoute     : String,
+    onHamburgerClick : () -> Unit
 ) {
-    val navBg = MaterialTheme.colorScheme.surface
+    val title = when (currentRoute) {
+        Routes.DASHBOARD -> ""          // Dashboard tidak pakai title (sudah ada greeting)
+        Routes.STATISTIK -> "Statistik"
+        Routes.REMINDER  -> "Reminder"
+        Routes.SETTINGS  -> "Pengaturan"
+        else             -> ""
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Transparent)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .background(Color(0xFF0A1F5C))  // navy deep
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
+        // Hamburger button di kiri
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .shadow(12.dp, RoundedCornerShape(28.dp))
-                .clip(RoundedCornerShape(28.dp))
-                .background(navBg)
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-        ) {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                items.forEach { item ->
-                    NavBarItem(item, currentRoute == item.route) { onItemClick(item.route) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun NavBarItem(item: NavItem, isActive: Boolean, onClick: () -> Unit) {
-    val animOffset by animateFloatAsState(if (isActive) -18f else 0f, label = "off")
-    val animScale  by animateFloatAsState(if (isActive) 1f else 0.85f,  label = "sc")
-    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication        = null,
-                onClick           = onClick
-            )
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .graphicsLayer { translationY = animOffset }
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .graphicsLayer { scaleX = animScale; scaleY = animScale }
-                .background(if (isActive) MintPrimary else Color.Transparent, CircleShape),
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF112870))
+                .clickable { onHamburgerClick() }
+                .align(Alignment.CenterStart),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector        = item.icon,
-                contentDescription = item.label,
-                tint               = if (isActive) Color.White else inactiveColor,
-                modifier           = Modifier.size(24.dp)
+                Icons.Rounded.Menu,
+                contentDescription = "Menu",
+                tint     = Color.White,
+                modifier = Modifier.size(22.dp)
             )
         }
-        Spacer(Modifier.height(2.dp))
+
+        // Title di tengah (hanya untuk halaman non-dashboard)
+        if (title.isNotEmpty()) {
+            Text(
+                title,
+                style    = MaterialTheme.typography.titleMedium.copy(
+                    color      = Color.White,
+                    fontWeight = FontWeight.ExtraBold
+                ),
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+
+        // Logo / brand di kanan (opsional)
         Text(
-            item.label,
-            fontSize   = 10.sp,
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-            color      = if (isActive) MintPrimary else inactiveColor
+            "💧 DrinkUp",
+            style    = MaterialTheme.typography.labelMedium.copy(
+                color      = Color(0xFF4FC3F7),
+                fontWeight = FontWeight.Bold
+            ),
+            modifier = Modifier.align(Alignment.CenterEnd)
         )
+    }
+}
+
+// ── Side Drawer ───────────────────────────────────────────────────────────────
+@Composable
+fun DrinkUpDrawer(
+    navItems      : List<NavItem>,
+    currentRoute  : String,
+    authViewModel : AuthViewModel,
+    onItemClick   : (String) -> Unit,
+    onLogout      : () -> Unit,
+    onClose       : () -> Unit
+) {
+    val userData by authViewModel.userData.collectAsState()
+    val userName  = userData.namaLengkap.ifBlank { "DrinkUp User" }
+    val userEmail = userData.email.ifBlank { "" }
+
+    ModalDrawerSheet(
+        modifier      = Modifier.width(300.dp),
+        drawerShape   = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+        drawerContainerColor = DrawerBg,
+        drawerTonalElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // ── Header drawer ─────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF0A1F5C), Color(0xFF0D3B8E))
+                        )
+                    )
+                    .padding(horizontal = 24.dp, vertical = 36.dp)
+            ) {
+                // Tombol close (X) di kanan atas
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.1f))
+                        .clickable { onClose() }
+                        .align(Alignment.TopEnd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+
+                Column {
+                    // Avatar
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(Color(0xFF3A85E0), Color(0xFF1565C0))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text  = userName.take(1).uppercase(),
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                color      = Color.White,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        userName,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            color      = Color.White,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    )
+                    if (userEmail.isNotEmpty()) {
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            userEmail,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFFB0C4E8)
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ── Nav items ─────────────────────────────────────────────────────
+            navItems.forEach { item ->
+                val isActive = currentRoute == item.route
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 3.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (isActive) Color(0xFF1E3FA0) else Color.Transparent
+                        )
+                        .clickable { onItemClick(item.route) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(
+                                    if (isActive) Color(0xFF4FC3F7).copy(alpha = 0.2f)
+                                    else Color.White.copy(alpha = 0.07f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                item.icon, null,
+                                tint     = if (isActive) Color(0xFF4FC3F7) else Color(0xFFB0C4E8),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            item.label,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color      = if (isActive) Color.White else Color(0xFFB0C4E8),
+                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isActive) {
+                            Icon(
+                                Icons.Rounded.ChevronRight, null,
+                                tint     = Color(0xFF4FC3F7),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Divider ───────────────────────────────────────────────────────
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(
+                modifier  = Modifier.padding(horizontal = 24.dp),
+                color     = DrawerDivider,
+                thickness = 1.dp
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // ── Info version ──────────────────────────────────────────────────
+            Row(
+                modifier          = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Rounded.Info, null,
+                    tint     = DrawerSubText.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "Versi",
+                    style    = MaterialTheme.typography.bodyMedium.copy(color = DrawerSubText),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "1.0.0",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color      = DrawerSubText,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            // ── Logout button di bawah ────────────────────────────────────────
+            HorizontalDivider(
+                modifier  = Modifier.padding(horizontal = 24.dp),
+                color     = DrawerDivider,
+                thickness = 1.dp
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFFFF6D00).copy(alpha = 0.12f))
+                    .clickable { onLogout() }
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(Color(0xFFFF6D00).copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Logout, null,
+                            tint     = Color(0xFFFF6D00),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        "Keluar",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color      = Color(0xFFFF6D00),
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }

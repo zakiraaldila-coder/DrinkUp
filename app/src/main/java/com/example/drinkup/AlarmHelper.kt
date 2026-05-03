@@ -127,7 +127,7 @@ object AlarmHelper {
                 Calendar.SUNDAY, Calendar.MONDAY, Calendar.TUESDAY,
                 Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY
             )
-            days.contains("WEEKENDS") -> listOf(Calendar.SATURDAY, Calendar.SUNDAY)
+            days.contains("  WEEKENDS") -> listOf(Calendar.SATURDAY, Calendar.SUNDAY)
             else -> days.mapNotNull { map[it] }
         }
     }

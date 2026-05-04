@@ -30,6 +30,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
 
 // ── Warna konsisten dengan tema navy app ─────────────────────────────────────
 private val L_Navy      = Color(0xFF0A1F5C)
@@ -77,6 +81,18 @@ fun LoginScreen(
                 )
             )
     ) {
+        // ── Dekorasi wave — ikut activeTab: kiri=Login, kanan=Register ────────
+        androidx.compose.animation.AnimatedContent(
+            targetState = activeTab,
+            transitionSpec = {
+                fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) togetherWith
+                        fadeOut(animationSpec = androidx.compose.animation.core.tween(400))
+            },
+            label = "wave"
+        ) { tab ->
+            NavyWaveDecoration(fromLeft = tab == AuthTab.SIGN_IN)
+        }
+
         Column(
             modifier            = Modifier
                 .fillMaxSize()
@@ -606,28 +622,13 @@ private fun RegisterForm(
 
             Spacer(Modifier.height(20.dp))
 
-            // ── Jenis Kelamin ─────────────────────────────────────────────────
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                GenderSelectCard(
-                    modifier    = Modifier.weight(1f),
-                    gender      = "L",
-                    label       = "Laki-laki",
-                    isSelected  = gender == "L",
-                    activeColor = L_MaleBlue,
-                    onClick     = { gender = "L" }
-                )
-                GenderSelectCard(
-                    modifier    = Modifier.weight(1f),
-                    gender      = "P",
-                    label       = "Perempuan",
-                    isSelected  = gender == "P",
-                    activeColor = L_FemPink,
-                    onClick     = { gender = "P" }
-                )
-            }
+            // ── Jenis Kelamin — Toggle Pill menyatu ───────────────────────────
+            NavyFormLabel("Jenis Kelamin")
+            Spacer(Modifier.height(8.dp))
+            GenderToggleRow(
+                selected = gender,
+                onSelect = { gender = it }
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -776,3 +777,97 @@ private fun navyFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedPlaceholderColor   = Color(0xFF4A6B9A),
     unfocusedPlaceholderColor = Color(0xFF4A6B9A)
 )
+
+// ════════════════════════════════════════════════════════════════════════════
+// NAVY WAVE DECORATION — elemen dekoratif sudut atas
+// fromLeft = true  → lengkung dari sudut kiri  (Login)
+// fromLeft = false → lengkung dari sudut kanan (Register)
+// ════════════════════════════════════════════════════════════════════════════
+@Composable
+fun NavyWaveDecoration(fromLeft: Boolean) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+    ) {
+        val w = size.width
+        val h = size.height
+        val path = Path()
+
+        if (fromLeft) {
+            // Lengkung dari kiri — bulge ke kanan bawah
+            path.moveTo(0f, 0f)
+            path.lineTo(w * 0.72f, 0f)
+            path.cubicTo(
+                w * 0.85f, 0f,
+                w * 0.55f, h * 0.55f,
+                w * 0.30f, h * 0.75f
+            )
+            path.cubicTo(
+                w * 0.12f, h * 0.88f,
+                0f, h * 0.70f,
+                0f, h * 0.60f
+            )
+            path.close()
+        } else {
+            // Lengkung dari kanan — mirror, bulge ke kiri bawah
+            path.moveTo(w, 0f)
+            path.lineTo(w * 0.28f, 0f)
+            path.cubicTo(
+                w * 0.15f, 0f,
+                w * 0.45f, h * 0.55f,
+                w * 0.70f, h * 0.75f
+            )
+            path.cubicTo(
+                w * 0.88f, h * 0.88f,
+                w, h * 0.70f,
+                w, h * 0.60f
+            )
+            path.close()
+        }
+
+        drawPath(
+            path  = path,
+            color = Color(0xFF1565C0).copy(alpha = 0.35f),
+            style = Fill
+        )
+
+        // Layer kedua lebih kecil untuk depth
+        val path2 = Path()
+        if (fromLeft) {
+            path2.moveTo(0f, 0f)
+            path2.lineTo(w * 0.52f, 0f)
+            path2.cubicTo(
+                w * 0.62f, 0f,
+                w * 0.38f, h * 0.45f,
+                w * 0.18f, h * 0.62f
+            )
+            path2.cubicTo(
+                w * 0.07f, h * 0.72f,
+                0f, h * 0.58f,
+                0f, h * 0.48f
+            )
+            path2.close()
+        } else {
+            path2.moveTo(w, 0f)
+            path2.lineTo(w * 0.48f, 0f)
+            path2.cubicTo(
+                w * 0.38f, 0f,
+                w * 0.62f, h * 0.45f,
+                w * 0.82f, h * 0.62f
+            )
+            path2.cubicTo(
+                w * 0.93f, h * 0.72f,
+                w, h * 0.58f,
+                w, h * 0.48f
+            )
+            path2.close()
+        }
+
+        drawPath(
+            path  = path2,
+            color = Color(0xFF1E3FA0).copy(alpha = 0.45f),
+            style = Fill
+        )
+    }
+}

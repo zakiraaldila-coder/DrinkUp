@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,87 +28,125 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.*
 
-// ─── Animated Flame ───────────────────────────────────────────────────────────
+// ─── Mascot pakai gambar PNG dari drawable ────────────────────────────────────
+// Ukuran bertambah setiap 5 streak (base 80dp, +12dp per 5 streak, max 160dp)
+// Overlay Canvas menambahkan efek glossy / 3D highlight agar lebih hidup
 @Composable
-fun FlameAnimation(modifier: Modifier = Modifier, size: Float = 120f) {
-    val inf = rememberInfiniteTransition(label = "flame")
+fun MascotAnimation(
+    modifier: Modifier = Modifier,
+    streak: Int = 0
+) {
+    val levelStep    = streak / 5
+    val mascotSizeDp = (80f + levelStep * 12f).coerceAtMost(160f).dp
 
-    val phase1 by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = 2 * PI.toFloat(),
-        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing)),
-        label         = "p1"
-    )
-    val phase2 by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = 2 * PI.toFloat(),
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)),
-        label         = "p2"
-    )
-    val scaleAnim by inf.animateFloat(
-        initialValue  = 0.97f,
-        targetValue   = 1.03f,
-        animationSpec = infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label         = "scale"
-    )
-
-    Canvas(modifier = modifier.size((size * 1.2f).dp)) {
-        val cx = this.size.width / 2f
-        val cy = this.size.height * 0.88f
-        val s  = size * density * scaleAnim
-
-        // Outer glow
-        drawCircle(
-            brush  = Brush.radialGradient(
-                colors = listOf(Color(0x33FF6B00), Color.Transparent),
-                center = Offset(cx, cy - s * 0.2f),
-                radius = s * 0.75f
-            ),
-            radius = s * 0.75f,
-            center = Offset(cx, cy - s * 0.2f)
-        )
-
-        fun buildFlamePath(
-            centerX: Float, baseY: Float,
-            width: Float, height: Float,
-            wobblePhase: Float
-        ): Path {
-            val path   = Path()
-            val wobble = sin(wobblePhase) * width * 0.07f
-            val tipX   = centerX + wobble * 0.5f
-            val tipY   = baseY - height
-            path.moveTo(centerX, baseY)
-            path.cubicTo(
-                centerX - width * 0.5f, baseY - height * 0.2f,
-                tipX - width * 0.22f + sin(wobblePhase * 1.3f) * width * 0.05f, baseY - height * 0.65f,
-                tipX, tipY
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(
+            modifier         = Modifier.size(mascotSizeDp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Gambar maskot dasar
+            Image(
+                painter            = painterResource(id = R.drawable.mascot),
+                contentDescription = "Maskot DrinkUp",
+                modifier           = Modifier.fillMaxSize()
             )
-            path.cubicTo(
-                tipX + width * 0.22f + sin(wobblePhase * 0.9f) * width * 0.05f, baseY - height * 0.65f,
-                centerX + width * 0.5f, baseY - height * 0.2f,
-                centerX, baseY
-            )
-            path.close()
-            return path
+
+            // ── Overlay Canvas: efek glossy 3D ──────────────────────────────
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+
+                // 1) Highlight utama — oval putih transparan di kiri atas
+                drawOval(
+                    brush   = Brush.radialGradient(
+                        colors  = listOf(
+                            Color.White.copy(alpha = 0.55f),
+                            Color.White.copy(alpha = 0.18f),
+                            Color.Transparent
+                        ),
+                        center  = Offset(w * 0.38f, h * 0.22f),
+                        radius  = w * 0.32f
+                    ),
+                    topLeft = Offset(w * 0.12f, h * 0.06f),
+                    size    = Size(w * 0.50f, h * 0.34f)
+                )
+
+                // 2) Specular kecil — titik paling terang (glint)
+                drawCircle(
+                    brush  = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.70f),
+                            Color.Transparent
+                        ),
+                        center = Offset(w * 0.36f, h * 0.18f),
+                        radius = w * 0.10f
+                    ),
+                    radius = w * 0.10f,
+                    center = Offset(w * 0.36f, h * 0.18f)
+                )
+
+                // 3) Rim light bawah — bayangan biru gelap di bagian bawah
+                drawOval(
+                    brush   = Brush.radialGradient(
+                        colors  = listOf(
+                            Color(0xFF1A237E).copy(alpha = 0.22f),
+                            Color.Transparent
+                        ),
+                        center  = Offset(w * 0.50f, h * 0.88f),
+                        radius  = w * 0.45f
+                    ),
+                    topLeft = Offset(w * 0.05f, h * 0.62f),
+                    size    = Size(w * 0.90f, h * 0.38f)
+                )
+
+                // 4) Highlight telinga kiri atas — titik putih kecil
+                drawCircle(
+                    brush  = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.55f),
+                            Color.Transparent
+                        ),
+                        center = Offset(w * 0.28f, h * 0.08f),
+                        radius = w * 0.07f
+                    ),
+                    radius = w * 0.07f,
+                    center = Offset(w * 0.28f, h * 0.08f)
+                )
+            }
         }
-
-        drawPath(buildFlamePath(cx, cy, s * 0.78f, s * 1.0f, phase1), Color(0xFFFF5722))
-        drawPath(buildFlamePath(cx + sin(phase2) * s * 0.04f, cy, s * 0.55f, s * 0.82f, phase2 + 0.5f), Color(0xFFFF9800))
-        drawPath(buildFlamePath(cx + sin(phase1 + 1f) * s * 0.03f, cy, s * 0.35f, s * 0.60f, phase1 + 1.2f), Color(0xFFFFCC02))
-
-        drawCircle(
-            brush  = Brush.radialGradient(
-                colors = listOf(Color(0xFFFFF9C4), Color(0x00FFCC02)),
-                center = Offset(cx, cy - s * 0.22f),
-                radius = s * 0.16f
-            ),
-            radius = s * 0.16f,
-            center = Offset(cx, cy - s * 0.22f)
-        )
     }
 }
 
-// ─── Small Flame for calendar cells ──────────────────────────────────────────
+// ─── Sparkle dekorasi bintang kecil ──────────────────────────────────────────
+@Composable
+fun SparkleDecor(modifier: Modifier = Modifier, color: Color = Color.White) {
+    val inf = rememberInfiniteTransition(label = "sparkle")
+    val alpha by inf.animateFloat(
+        initialValue  = 0.2f,
+        targetValue   = 0.85f,
+        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label         = "sparkleFade"
+    )
+    Canvas(modifier = modifier) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val r  = size.width / 2f
+        val path = Path().apply {
+            moveTo(cx, cy - r)
+            lineTo(cx + r * 0.25f, cy - r * 0.25f)
+            lineTo(cx + r, cy)
+            lineTo(cx + r * 0.25f, cy + r * 0.25f)
+            lineTo(cx, cy + r)
+            lineTo(cx - r * 0.25f, cy + r * 0.25f)
+            lineTo(cx - r, cy)
+            lineTo(cx - r * 0.25f, cy - r * 0.25f)
+            close()
+        }
+        drawPath(path, color.copy(alpha = alpha))
+    }
+}
+
+// ─── Small Flame for calendar cells (TIDAK DIUBAH) ───────────────────────────
 @Composable
 fun SmallFlame(modifier: Modifier = Modifier) {
     val inf = rememberInfiniteTransition(label = "sf")
@@ -117,7 +156,6 @@ fun SmallFlame(modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
         label         = "sfp"
     )
-
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
         val cy = size.height * 0.88f
@@ -145,7 +183,7 @@ fun SmallFlame(modifier: Modifier = Modifier) {
 @Composable
 fun WaterDropIcon(modifier: Modifier = Modifier, color: Color = Color(0xFF42A5F5)) {
     Canvas(modifier = modifier) {
-        val cx = size.width / 2f
+        val cx   = size.width / 2f
         val drop = Path()
         drop.moveTo(cx, 0f)
         drop.cubicTo(cx + size.width * 0.5f, size.height * 0.4f,
@@ -154,7 +192,6 @@ fun WaterDropIcon(modifier: Modifier = Modifier, color: Color = Color(0xFF42A5F5
             cx - size.width * 0.5f, size.height * 0.4f, cx, 0f)
         drop.close()
         drawPath(drop, color)
-
         val shine = Path()
         shine.moveTo(cx - size.width * 0.08f, size.height * 0.25f)
         shine.cubicTo(cx - size.width * 0.18f, size.height * 0.42f,
@@ -172,9 +209,8 @@ fun WaterDropIcon(modifier: Modifier = Modifier, color: Color = Color(0xFF42A5F5
 @Composable
 fun TrophyIcon(modifier: Modifier = Modifier, color: Color = Color(0xFFFFB300)) {
     Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
+        val w   = size.width
+        val h   = size.height
         val cup = Path()
         cup.moveTo(w * 0.18f, h * 0.05f)
         cup.lineTo(w * 0.82f, h * 0.05f)
@@ -182,18 +218,12 @@ fun TrophyIcon(modifier: Modifier = Modifier, color: Color = Color(0xFFFFB300)) 
         cup.cubicTo(w * 0.38f, h * 0.68f, w * 0.18f, h * 0.55f, w * 0.18f, h * 0.05f)
         cup.close()
         drawPath(cup, color)
-
-        drawArc(
-            color = color, startAngle = 200f, sweepAngle = 160f, useCenter = false,
+        drawArc(color = color, startAngle = 200f, sweepAngle = 160f, useCenter = false,
             topLeft = Offset(0f, h * 0.08f), size = Size(w * 0.26f, h * 0.34f),
-            style = Stroke(width = w * 0.08f)
-        )
-        drawArc(
-            color = color, startAngle = 200f, sweepAngle = -160f, useCenter = false,
+            style   = Stroke(width = w * 0.08f))
+        drawArc(color = color, startAngle = 200f, sweepAngle = -160f, useCenter = false,
             topLeft = Offset(w * 0.74f, h * 0.08f), size = Size(w * 0.26f, h * 0.34f),
-            style = Stroke(width = w * 0.08f)
-        )
-
+            style   = Stroke(width = w * 0.08f))
         drawRect(color = color, topLeft = Offset(w * 0.41f, h * 0.70f), size = Size(w * 0.18f, h * 0.16f))
         drawRoundRect(color = color, topLeft = Offset(w * 0.25f, h * 0.84f),
             size = Size(w * 0.50f, h * 0.12f), cornerRadius = CornerRadius(4f, 4f))
@@ -211,15 +241,12 @@ fun BarChartIcon(modifier: Modifier = Modifier) {
         val barW   = w * 0.22f
         val gap    = w * 0.08f
         val startX = (w - (fracs.size * barW + (fracs.size - 1) * gap)) / 2f
-
         fracs.forEachIndexed { i, frac ->
             val bh = h * frac * 0.85f
-            drawRoundRect(
-                color        = colors[i],
+            drawRoundRect(color = colors[i],
                 topLeft      = Offset(startX + i * (barW + gap), h - bh),
                 size         = Size(barW, bh),
-                cornerRadius = CornerRadius(3f, 3f)
-            )
+                cornerRadius = CornerRadius(3f, 3f))
         }
     }
 }
@@ -246,6 +273,7 @@ fun StreakScreen(
     val colorScheme = MaterialTheme.colorScheme
     val state       by intakeViewModel.state.collectAsState()
 
+    // ── DATA — LOGIC TIDAK DIUBAH ─────────────────────────────────────────────
     val streak       = state.streak
     val bestStreak   = state.bestStreak
     val glassesMonth = state.glassesThisMonth
@@ -278,31 +306,63 @@ fun StreakScreen(
         if (nextMilestone > prevMilestone)
             (streak - prevMilestone).toFloat() / (nextMilestone - prevMilestone)
         else 1f
+    // ─────────────────────────────────────────────────────────────────────────
+
+    val motivationText = when {
+        streak == 0 -> "Mulai streakmu hari ini! 👋"
+        streak < 3  -> "Awal yang bagus, terus semangat!"
+        streak < 7  -> "Keren! Kamu sedang on fire!"
+        streak < 14 -> "Luar biasa! Terus jaga ritme ini!"
+        streak < 30 -> "Konsisten sekali! Kamu juara!"
+        else        -> "Legenda hidrasi! Salut! 🏆"
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFF3E0), colorScheme.background)))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), colorScheme.background)
+                )
+            )
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // TOP BAR
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+            // ── TOP BAR ────────────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
                 Column(modifier = Modifier.align(Alignment.CenterStart)) {
-                    Text("DrinkUp",
+                    Text(
+                        "DrinkUp",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = Color(0xFFF57C00), fontWeight = FontWeight.Bold, letterSpacing = 1.sp))
-                    Text("Streak Kamu",
+                            color         = Color(0xFF1565C0),
+                            fontWeight    = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                    Text(
+                        "Streak Kamu",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            color = colorScheme.onBackground, fontWeight = FontWeight.ExtraBold))
+                            color      = Color(0xFF0D1B4A),
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    )
                 }
                 IconButton(
                     onClick  = onBack,
-                    modifier = Modifier.align(Alignment.CenterEnd).size(42.dp)
-                        .background(colorScheme.surface, RoundedCornerShape(14.dp))
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .size(44.dp)
+                        .background(Color(0xFF1565C0), RoundedCornerShape(14.dp))
                 ) {
-                    Icon(Icons.Rounded.ArrowBack, null,
-                        tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Rounded.ArrowBack, null,
+                        tint     = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
@@ -313,93 +373,121 @@ fun StreakScreen(
                     .padding(horizontal = 20.dp)
             ) {
 
-                // FLAME HERO CARD
+                // ── MASCOT HERO CARD ───────────────────────────────────────────
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(Brush.radialGradient(
-                            colors = listOf(Color(0xFFFFE0B2), Color(0xFFFFF3E0)), radius = 600f))
-                        .padding(vertical = 20.dp),
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Color(0xFFBBDEFB), Color(0xFF90CAF9), Color(0xFF64B5F6)),
+                                radius = 800f
+                            )
+                        )
+                        .padding(vertical = 28.dp, horizontal = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Dekorasi sparkle di sudut
+                    SparkleDecor(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .align(Alignment.TopStart)
+                            .offset(x = 18.dp, y = 18.dp),
+                        color    = Color(0xFF1565C0).copy(alpha = 0.5f)
+                    )
+                    SparkleDecor(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-24).dp, y = 28.dp),
+                        color    = Color.White.copy(alpha = 0.7f)
+                    )
+                    SparkleDecor(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .align(Alignment.BottomStart)
+                            .offset(x = 40.dp, y = (-20).dp),
+                        color    = Color.White.copy(alpha = 0.55f)
+                    )
+
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FlameAnimation(size = 90f)
-                        Spacer(Modifier.height(4.dp))
-                        Text("$streak",
-                            style = MaterialTheme.typography.displayMedium.copy(
-                                color = Color(0xFFE65100), fontWeight = FontWeight.Black))
-                        Text("Hari Berturut-turut",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color(0xFFF57C00), fontWeight = FontWeight.SemiBold))
-                        Spacer(Modifier.height(10.dp))
-                        val motivationText = when {
-                            streak == 0 -> "Mulai streakmu hari ini!"
-                            streak < 3  -> "Awal yang bagus, terus semangat!"
-                            streak < 7  -> "Keren! Kamu sedang panas!"
-                            streak < 14 -> "Luar biasa! Terus jaga ritme ini!"
-                            streak < 30 -> "Konsisten sekali! Kamu juara!"
-                            else        -> "Legenda hidrasi! Salut!"
-                        }
-                        Surface(shape = RoundedCornerShape(50), color = Color(0xFFF57C00).copy(alpha = 0.12f)) {
-                            Text(motivationText,
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = Color(0xFFBF360C), fontWeight = FontWeight.Bold),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-                        }
-                    }
-                }
 
-                Spacer(Modifier.height(20.dp))
-
-                // MINGGU INI
-                Text("MINGGU INI",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        color = colorScheme.onBackground.copy(alpha = 0.5f),
-                        fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp))
-                Spacer(Modifier.height(10.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    weekDays.forEachIndexed { index, (label, dayNum, achieved) ->
-                        val isToday = index == todayDow
-                        val bgBrush: Brush = when {
-                            isToday  -> Brush.verticalGradient(listOf(Color.White, Color.White))
-                            achieved -> Brush.verticalGradient(listOf(Color(0xFFFF8F00), Color(0xFFE65100)))
-                            else     -> Brush.verticalGradient(listOf(Color(0xFFFFCC80), Color(0xFFFFB74D)))
-                        }
+                        // Bubble chat
                         Box(
                             modifier = Modifier
-                                .weight(1f).aspectRatio(0.60f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(brush = bgBrush)
-                                .then(if (isToday)
-                                    Modifier.border(2.dp, Color(0xFFF57C00), RoundedCornerShape(14.dp))
-                                else Modifier),
-                            contentAlignment = Alignment.Center
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart   = 16.dp, topEnd    = 16.dp,
+                                        bottomEnd  = 16.dp, bottomStart = 4.dp
+                                    )
+                                )
+                                .background(Color.White.copy(alpha = 0.92f))
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center) {
-                                Text(label,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = if (isToday) Color(0xFFF57C00) else Color.White.copy(alpha = 0.9f),
-                                        fontWeight = FontWeight.Bold, fontSize = 9.sp))
-                                Spacer(Modifier.height(4.dp))
-                                if (achieved && !isToday) {
-                                    SmallFlame(modifier = Modifier.size(18.dp))
-                                } else {
-                                    WaterDropIcon(
-                                        modifier = Modifier.size(16.dp),
-                                        color    = if (isToday) Color(0xFF42A5F5) else Color.White.copy(alpha = 0.7f))
-                                }
-                                Spacer(Modifier.height(3.dp))
-                                Text("$dayNum",
+                            Text(
+                                motivationText,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color      = Color(0xFF0D47A1),
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // Mascot
+                        MascotAnimation(
+                            modifier = Modifier.size(140.dp),
+                            streak   = streak
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        // Angka streak
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                "$streak",
+                                style = MaterialTheme.typography.displayMedium.copy(
+                                    color      = Color(0xFF0D47A1),
+                                    fontWeight = FontWeight.Black
+                                )
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "hari",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    color      = Color(0xFF1565C0),
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                        }
+                        Text(
+                            "Berturut-turut",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color      = Color(0xFF1565C0),
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // Level badge (tampil jika sudah ada minimal 1 level)
+                        val levelStep = streak / 5
+                        if (levelStep > 0) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFF1565C0).copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    "⭐ Level ${levelStep + 1}",
                                     style = MaterialTheme.typography.labelMedium.copy(
-                                        color = if (isToday) colorScheme.onSurface else Color.White,
-                                        fontWeight = FontWeight.ExtraBold))
-                                Spacer(Modifier.height(4.dp))
-                                Box(modifier = Modifier.size(4.dp).background(
-                                    if (isToday) Color(0xFFF57C00) else Color.White.copy(alpha = 0.5f),
-                                    CircleShape))
+                                        color      = Color(0xFF0D47A1),
+                                        fontWeight = FontWeight.ExtraBold
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                                )
                             }
                         }
                     }
@@ -407,15 +495,102 @@ fun StreakScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // STATS CARDS
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // ── MINGGU INI (LOGIC TIDAK DIUBAH) ──────────────────────────
+                Text(
+                    "MINGGU INI",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color         = Color(0xFF0D1B4A).copy(alpha = 0.5f),
+                        fontWeight    = FontWeight.ExtraBold,
+                        letterSpacing = 2.sp
+                    )
+                )
+                Spacer(Modifier.height(10.dp))
 
-                    // Best Streak
-                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xFFFF8F00), Color(0xFFE65100))))
-                        .padding(14.dp)) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    weekDays.forEachIndexed { index, (label, dayNum, achieved) ->
+                        val isToday  = index == todayDow
+                        val bgBrush: Brush = when {
+                            isToday  -> Brush.verticalGradient(listOf(Color.White, Color(0xFFE3F2FD)))
+                            achieved -> Brush.verticalGradient(listOf(Color(0xFF42A5F5), Color(0xFF1565C0)))
+                            else     -> Brush.verticalGradient(listOf(Color(0xFF90CAF9), Color(0xFF64B5F6)))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(0.60f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(brush = bgBrush)
+                                .then(
+                                    if (isToday) Modifier.border(2.dp, Color(0xFF1565C0), RoundedCornerShape(14.dp))
+                                    else Modifier
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color      = if (isToday) Color(0xFF1565C0) else Color.White.copy(alpha = 0.9f),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize   = 9.sp
+                                    )
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                if (achieved && !isToday) {
+                                    SmallFlame(modifier = Modifier.size(18.dp))
+                                } else {
+                                    WaterDropIcon(
+                                        modifier = Modifier.size(16.dp),
+                                        color    = if (isToday) Color(0xFF1565C0) else Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
+                                Spacer(Modifier.height(3.dp))
+                                Text(
+                                    "$dayNum",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color      = if (isToday) Color(0xFF0D1B4A) else Color.White,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .background(
+                                            if (isToday) Color(0xFF1565C0) else Color.White.copy(alpha = 0.5f),
+                                            CircleShape
+                                        )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // ── STATS CARDS (LOGIC TIDAK DIUBAH) ──────────────────────────
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Best Streak — biru gelap
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Brush.verticalGradient(listOf(Color(0xFF1E88E5), Color(0xFF0D47A1))))
+                            .padding(14.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier            = Modifier.fillMaxWidth()
+                        ) {
                             TrophyIcon(modifier = Modifier.size(28.dp), color = Color.White)
                             Spacer(Modifier.height(6.dp))
                             Text("$bestStreak",
@@ -465,13 +640,13 @@ fun StreakScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // PROGRESS MILESTONE
+                // ── PROGRESS MILESTONE (LOGIC TIDAK DIUBAH) ───────────────────
                 Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),
                     color = colorScheme.surface, shadowElevation = 2.dp) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically) {
+                            verticalAlignment     = Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 TargetIcon(modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
@@ -480,17 +655,19 @@ fun StreakScreen(
                                         color = colorScheme.onSurface, fontWeight = FontWeight.SemiBold))
                             }
                             Surface(shape = RoundedCornerShape(50),
-                                color = Color(0xFFF57C00).copy(alpha = 0.12f)) {
+                                color = Color(0xFF1565C0).copy(alpha = 0.10f)) {
                                 Text("$streak/$nextMilestone",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        color = Color(0xFFF57C00), fontWeight = FontWeight.ExtraBold),
+                                    style    = MaterialTheme.typography.labelMedium.copy(
+                                        color = Color(0xFF1565C0), fontWeight = FontWeight.ExtraBold),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
                             }
                         }
 
                         Spacer(Modifier.height(12.dp))
 
-                        Box(modifier = Modifier.fillMaxWidth().height(10.dp)
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .height(10.dp)
                             .clip(RoundedCornerShape(50))
                             .background(colorScheme.surfaceVariant)) {
                             val animProg by animateFloatAsState(
@@ -498,10 +675,13 @@ fun StreakScreen(
                                 animationSpec = tween(1200, easing = FastOutSlowInEasing),
                                 label         = "milestoneAnim"
                             )
-                            Box(modifier = Modifier.fillMaxWidth(animProg).fillMaxHeight()
+                            Box(modifier = Modifier
+                                .fillMaxWidth(animProg)
+                                .fillMaxHeight()
                                 .clip(RoundedCornerShape(50))
-                                .background(Brush.horizontalGradient(
-                                    listOf(Color(0xFFFFB74D), Color(0xFFE65100)))))
+                                .background(
+                                    Brush.horizontalGradient(listOf(Color(0xFF42A5F5), Color(0xFF0D47A1)))
+                                ))
                         }
 
                         Spacer(Modifier.height(10.dp))
@@ -510,18 +690,19 @@ fun StreakScreen(
                         Text(
                             if (remaining > 0) "$remaining hari lagi untuk mencapai milestone berikutnya!"
                             else "Kamu sudah mencapai milestone ini! Luar biasa!",
-                            style = MaterialTheme.typography.bodySmall.copy(color = colorScheme.onSurfaceVariant))
+                            style = MaterialTheme.typography.bodySmall.copy(color = colorScheme.onSurfaceVariant)
+                        )
                     }
                 }
 
                 Spacer(Modifier.height(24.dp))
 
-                // TOMBOL MINUM SEKARANG
+                // ── TOMBOL MINUM SEKARANG ──────────────────────────────────────
                 Button(
                     onClick  = onBack,
                     modifier = Modifier.fillMaxWidth().height(58.dp),
                     shape    = RoundedCornerShape(50),
-                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100))
+                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
                 ) {
                     WaterDropIcon(modifier = Modifier.size(20.dp), color = Color.White)
                     Spacer(Modifier.width(10.dp))

@@ -45,23 +45,16 @@ private val slides = listOf(
         title       = "Lacak Konsumsi",
         titleItalic = "Harianmu",
         subtitle    = "Pantau setiap tetes air yang kamu minum dengan mudah dan akurat.",
-        description = "Bangun kebiasaan sehat dengan pemantauan asupan air yang presisi dan personal setiap hari.",
+        description = "",
         ctaText     = "Mulai Sekarang"
     ),
     OnboardSlide(
         title       = "Raih Target",
         titleItalic = "Hidrasimu",
         subtitle    = "Sesuaikan target harian berdasarkan berat badan dan aktivitasmu.",
-        description = "Sistem cerdas kami menghitung kebutuhan air tubuhmu secara personal dan adaptif.",
+        description = "",
         ctaText     = "Selanjutnya"
     ),
-    OnboardSlide(
-        title       = "Tetap Sehat",
-        titleItalic = "Setiap Hari",
-        subtitle    = "Dapatkan pengingat pintar agar kamu tidak pernah lupa minum air.",
-        description = "Notifikasi cerdas dan streak harian membuatmu termotivasi untuk hidup lebih sehat.",
-        ctaText     = "Mulai Sekarang"
-    )
 )
 
 // ─────────────────────────────────────────────────────────────
@@ -114,7 +107,11 @@ fun WelcomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(listOf(BgPage, Color(0xFFD8EEF5), Color(0xFFCCEEF5)))
+                Brush.verticalGradient(listOf(
+                    Color(0xFF0D2B6B),   // navy medium atas
+                    Color(0xFF0A1F5C),   // navy deep tengah
+                    Color(0xFF0C2870)    // navy biru sedikit lebih terang bawah
+                ))
             )
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -134,22 +131,33 @@ fun WelcomeScreen(
         // ── Blob dekorasi background ──────────────────────────────
         Box(
             modifier = Modifier
-                .size(260.dp)
-                .offset(x = (-80).dp, y = (-60).dp)
-                .alpha(0.18f)
+                .size(300.dp)
+                .offset(x = (-80).dp, y = (-40).dp)
+                .alpha(0.25f)
                 .background(
-                    Brush.radialGradient(listOf(Teal400, Color.Transparent)),
+                    Brush.radialGradient(listOf(Color(0xFF4FC3F7), Color.Transparent)),
+                    CircleShape
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(220.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = 60.dp, y = 100.dp)
+                .alpha(0.15f)
+                .background(
+                    Brush.radialGradient(listOf(Color(0xFF00E5CC), Color.Transparent)),
                     CircleShape
                 )
         )
         Box(
             modifier = Modifier
                 .size(180.dp)
-                .align(Alignment.TopEnd)
-                .offset(x = 60.dp, y = 120.dp)
-                .alpha(0.14f)
+                .align(Alignment.BottomStart)
+                .offset(x = (-40).dp, y = 40.dp)
+                .alpha(0.12f)
                 .background(
-                    Brush.radialGradient(listOf(WaterMid, Color.Transparent)),
+                    Brush.radialGradient(listOf(Color(0xFF29B6F6), Color.Transparent)),
                     CircleShape
                 )
         )
@@ -168,20 +176,10 @@ fun WelcomeScreen(
                 modifier          = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier         = Modifier
-                        .size(40.dp)
-                        .background(
-                            Brush.verticalGradient(listOf(Teal500, Teal600)),
-                            WaterDropShape()
-                        ),
-                    contentAlignment = Alignment.Center
-                ) { Text("💧", fontSize = 18.sp) }
-                Spacer(Modifier.width(10.dp))
                 Text(
                     text  = "DrinkUp",
                     style = MaterialTheme.typography.titleLarge.copy(
-                        color      = Navy800,
+                        color      = Color(0xFFFFFFFF),
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
@@ -192,7 +190,7 @@ fun WelcomeScreen(
                         Text(
                             text  = "Lewati",
                             style = MaterialTheme.typography.labelLarge.copy(
-                                color      = Teal600,
+                                color      = Color.White,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -232,48 +230,47 @@ fun WelcomeScreen(
                     )
                 }
 
-                // Badge bawah
+                // Badge bawah — diperkecil dan diturunkan
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 10.dp)
                         .clip(RoundedCornerShape(50))
                         .background(Color.White.copy(alpha = 0.92f))
-                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier         = Modifier
-                                .size(32.dp)
+                                .size(24.dp)
                                 .background(Teal400.copy(alpha = 0.2f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                when (currentPage) { 0 -> "📊"; 1 -> "🎯"; else -> "🔥" },
-                                fontSize = 14.sp
+                                when (currentPage) { 0 -> "📊"; else -> "🎯" },
+                                fontSize = 11.sp
                             )
                         }
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(8.dp))
                         Column {
                             Text(
                                 text  = when (currentPage) {
                                     0 -> "TARGET HARI INI"
-                                    1 -> "PROGRES MINGGU INI"
-                                    else -> "STREAK KAMU"
+                                    else -> "PROGRES MINGGU INI"
                                 },
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color         = Teal600,
                                     fontWeight    = FontWeight.Bold,
-                                    letterSpacing = 0.8.sp
+                                    letterSpacing = 0.6.sp,
+                                    fontSize      = 8.sp
                                 )
                             )
                             Text(
                                 text  = when (currentPage) {
                                     0 -> "2.5 Liter Tercapai"
-                                    1 -> "85% Target Mingguan"
-                                    else -> "7 Hari Berturut-turut!"
+                                    else -> "85% Target Mingguan"
                                 },
-                                style = MaterialTheme.typography.titleSmall.copy(
+                                style = MaterialTheme.typography.labelMedium.copy(
                                     color      = Navy800,
                                     fontWeight = FontWeight.ExtraBold
                                 )
@@ -290,7 +287,7 @@ fun WelcomeScreen(
                 Text(
                     text  = slide.title + " ",
                     style = MaterialTheme.typography.headlineMedium.copy(
-                        color      = TextPrimary,
+                        color      = Color(0xFFFFFFFF),
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
@@ -298,21 +295,10 @@ fun WelcomeScreen(
             Text(
                 text  = slide.titleItalic,
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    color      = Teal600,
+                    color      = Color(0xFF4FC3F7),
                     fontWeight = FontWeight.ExtraBold,
                     fontStyle  = FontStyle.Italic
                 )
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text      = slide.description,
-                style     = MaterialTheme.typography.bodyMedium.copy(
-                    color      = TextSecondary,
-                    lineHeight = 24.sp
-                ),
-                textAlign = TextAlign.Start
             )
 
             Spacer(Modifier.height(24.dp))
@@ -326,31 +312,40 @@ fun WelcomeScreen(
                             .height(6.dp)
                             .width(if (isActive) 28.dp else 6.dp)
                             .clip(CircleShape)
-                            .background(if (isActive) Navy800 else Navy800.copy(alpha = 0.2f))
+                            .background(if (isActive) Color(0xFF4FC3F7) else Color.White.copy(alpha = 0.25f))
                     )
                 }
             }
 
+            Spacer(Modifier.height(20.dp))
+
             Spacer(Modifier.weight(1f))
 
             // ── Tombol CTA ────────────────────────────────────────
-            Button(
-                onClick   = {
-                    if (currentPage < slides.lastIndex) currentPage++
-                    else onRegisterClick()
-                },
-                modifier  = Modifier.fillMaxWidth().height(56.dp),
-                shape     = RoundedCornerShape(18.dp),
-                colors    = ButtonDefaults.buttonColors(containerColor = Navy800),
-                elevation = ButtonDefaults.buttonElevation(4.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text  = if (currentPage < slides.lastIndex) "Selanjutnya →" else "Mulai Sekarang →",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color      = White,
-                        fontWeight = FontWeight.Bold
+                TextButton(
+                    onClick   = {
+                        if (currentPage < slides.lastIndex) currentPage++
+                        else onRegisterClick()
+                    },
+                    modifier  = Modifier.fillMaxSize(),
+                    shape     = RoundedCornerShape(50.dp),
+                ) {
+                    Text(
+                        text  = if (currentPage < slides.lastIndex) "Selanjutnya →" else "Mulai Sekarang →",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color      = Color(0xFF0A1F5C),
+                            fontWeight = FontWeight.Bold
+                        )
                     )
-                )
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -362,7 +357,7 @@ fun WelcomeScreen(
             ) {
                 Text(
                     "Sudah punya akun? ",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFFB0C4E8))
                 )
                 TextButton(
                     onClick      = onLoginClick,
@@ -371,7 +366,7 @@ fun WelcomeScreen(
                     Text(
                         text  = "Masuk",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color      = Navy800,
+                            color      = Color(0xFF4FC3F7),
                             fontWeight = FontWeight.ExtraBold
                         )
                     )

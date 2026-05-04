@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,13 +60,22 @@ fun TambahScreen(
         WaterOption(500,  "500ml", "Botol Sedang")
     )
 
-    // Pulse pada tombol simpan
-    val inf = rememberInfiniteTransition(label = "pulse")
+    // Animasi
+    val inf = rememberInfiniteTransition(label = "anim")
     val pulseScale by inf.animateFloat(
         initialValue  = 1f,
         targetValue   = 1.025f,
         animationSpec = infiniteRepeatable(tween(1000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label         = "btnScale"
+    )
+    // Floating naik-turun halus
+    val floatY by inf.animateFloat(
+        initialValue  = 0f,
+        targetValue   = -12f,
+        animationSpec = infiniteRepeatable(
+            tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse
+        ),
+        label = "floatY"
     )
 
     Box(
@@ -99,90 +109,66 @@ fun TambahScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(12.dp))
 
-            // Handle bar
+            // ── Wave Header + Ilustrasi Floating ──────────────────────
             Box(
                 modifier = Modifier
-                    .width(40.dp).height(4.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(TextSub.copy(alpha = 0.35f))
-            )
-
-            Spacer(Modifier.height(18.dp))
-
-            // Header
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(
-                        Brush.radialGradient(listOf(WaterCyan.copy(alpha = 0.2f), NavyMid)),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) { Text("💧", fontSize = 28.sp) }
-
-            Spacer(Modifier.height(10.dp))
-
-            Text(
-                "Tambah Asupan Air",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    color      = TextWhite,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.3).sp
-                ),
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Pilih ukuran atau atur sendiri",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextSub),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            // ── Preview ringkas progress hari ini ──────────────────────
-            Box(
-                modifier         = Modifier.size(100.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(250.dp)
             ) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    val stroke = 8.dp.toPx()
-                    val sweep  = 360f * (selectedOption?.let { options[it].ml.toFloat() / 500f } ?: 0f).coerceIn(0f, 1f)
-                    drawArc(
-                        color      = androidx.compose.ui.graphics.Color(0xFF1E3FA0),
-                        startAngle = -90f, sweepAngle = 360f, useCenter = false,
-                        style      = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                    )
-                    drawArc(
-                        brush      = androidx.compose.ui.graphics.Brush.sweepGradient(listOf(
-                            androidx.compose.ui.graphics.Color(0xFF4FC3F7),
-                            androidx.compose.ui.graphics.Color(0xFF29B6F6)
-                        )),
-                        startAngle = -90f, sweepAngle = sweep, useCenter = false,
-                        style      = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val previewMl = if (customInput.isNotEmpty()) customInput.toIntOrNull() ?: 0
-                    else selectedOption?.let { options[it].ml } ?: 0
-                    Text(
-                        "${previewMl}ml",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextWhite, fontWeight = FontWeight.ExtraBold
+                // Background gradient biru header
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(listOf(Color(0xFF1A3A8F), Color(0xFF0D2B7A)))
                         )
+                )
+
+                // Gelombang melengkung di bawah header
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .align(Alignment.BottomCenter)
+                ) {
+                    val path = androidx.compose.ui.graphics.Path()
+                    path.moveTo(0f, size.height)
+                    path.cubicTo(
+                        size.width * 0.25f, 0f,
+                        size.width * 0.75f, 0f,
+                        size.width, size.height
                     )
-                    Text(
-                        "dipilih",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSub, fontSize = 9.sp
-                        )
-                    )
+                    path.lineTo(size.width, size.height)
+                    path.lineTo(0f, size.height)
+                    path.close()
+                    drawPath(path, Color(0xFF0A1F5C))
                 }
+
+                // Handle bar
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 12.dp)
+                        .width(40.dp).height(4.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.3f))
+                )
+
+                // Ilustrasi orang minum — animasi floating naik-turun
+                androidx.compose.foundation.Image(
+                    painter            = androidx.compose.ui.res.painterResource(id = R.drawable.img_drink_illustration),
+                    contentDescription = "Ilustrasi minum air",
+                    contentScale       = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier           = Modifier
+                        .height(195.dp)
+                        .align(Alignment.Center)
+                        .padding(bottom = 20.dp)
+                        .offset(y = floatY.dp)
+                )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             // ── Section label ──────────────────────────────────────────
             Row(
@@ -263,11 +249,16 @@ fun TambahScreen(
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
                                             .padding(7.dp)
-                                            .size(16.dp)
-                                            .background(Color.White.copy(alpha = 0.3f), CircleShape),
+                                            .size(18.dp)
+                                            .background(Color.White.copy(alpha = 0.35f), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("✓", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.ExtraBold)
+                                        Icon(
+                                            imageVector = Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(11.dp)
+                                        )
                                     }
                                 }
                             }

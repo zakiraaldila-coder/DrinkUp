@@ -20,15 +20,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.foundation.Canvas
 
 // ── Data Model ────────────────────────────────────────────────────────────────
 data class ReminderItem(
@@ -66,11 +75,73 @@ private fun Map<String, Any>.toReminderItem(id: String) = ReminderItem(
     vibration = this["vibration"] as? Boolean ?: true
 )
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+private val RBgDeep     = Color(0xFF0B1629)
+private val RBgCard     = Color(0xFF112240)
+private val RCyan       = Color(0xFF00E5FF)
+private val RBlue       = Color(0xFF2979FF)
+private val RTeal       = Color(0xFF00BFA5)
+private val RTextPrimary= Color(0xFFE8F0FE)
+private val RTextSec    = Color(0xFF7B93B8)
+private val RTextMuted  = Color(0xFF3D5A80)
+
+// ── Canvas: Bell Icon ─────────────────────────────────────────────────────────
+@Composable
+private fun BellIcon(modifier: Modifier = Modifier, color: Color = RCyan, muted: Boolean = false) {
+    Canvas(modifier = modifier) {
+        val w = size.width; val h = size.height; val cx = w / 2f
+        val bodyPath = Path().apply {
+            moveTo(cx, 0f)
+            cubicTo(cx + w * .42f, 0f, cx + w * .42f, h * .55f, cx + w * .48f, h * .72f)
+            lineTo(cx - w * .48f, h * .72f)
+            cubicTo(cx - w * .42f, h * .55f, cx - w * .42f, 0f, cx, 0f)
+            close()
+        }
+        drawPath(bodyPath, color)
+        drawArc(Color.White.copy(.5f), 200f, 140f, false,
+            Offset(cx - w * .08f, -h * .04f), Size(w * .16f, h * .16f),
+            style = Stroke(w * .07f, cap = StrokeCap.Round))
+        drawRoundRect(color, Offset(cx - w * .48f, h * .68f), Size(w * .96f, h * .12f),
+            CornerRadius(w * .04f))
+        drawArc(color, 0f, 180f, false, Offset(cx - w * .12f, h * .76f), Size(w * .24f, h * .16f))
+        if (muted) {
+            drawLine(Color.White.copy(.8f), Offset(w * .15f, h * .15f), Offset(w * .85f, h * .85f),
+                w * .09f, StrokeCap.Round)
+        }
+    }
+}
+
+// ── Canvas: Clock Icon ────────────────────────────────────────────────────────
+@Composable
+private fun ClockIconR(modifier: Modifier = Modifier, color: Color = RCyan) {
+    Canvas(modifier = modifier) {
+        val cx = size.width / 2f; val cy = size.height / 2f; val r = size.width / 2f
+        drawCircle(color, r, Offset(cx, cy))
+        drawCircle(Color.White.copy(.15f), r * .82f, Offset(cx, cy), style = Stroke(r * .06f))
+        drawLine(Color.White, Offset(cx, cy), Offset(cx, cy - r * .50f), r * .08f, StrokeCap.Round)
+        drawLine(Color.White, Offset(cx, cy), Offset(cx + r * .36f, cy), r * .07f, StrokeCap.Round)
+        drawCircle(Color.White, r * .07f, Offset(cx, cy))
+    }
+}
+
+// ── Canvas: Vibrate Icon ──────────────────────────────────────────────────────
+@Composable
+private fun VibrateIcon(modifier: Modifier = Modifier, color: Color = RCyan) {
+    Canvas(modifier = modifier) {
+        val w = size.width; val h = size.height
+        drawRoundRect(color, Offset(w * .28f, h * .08f), Size(w * .44f, h * .84f), CornerRadius(w * .08f))
+        drawLine(color.copy(.6f), Offset(w * .16f, h * .30f), Offset(w * .08f, h * .44f), w * .06f, StrokeCap.Round)
+        drawLine(color.copy(.6f), Offset(w * .16f, h * .56f), Offset(w * .08f, h * .70f), w * .06f, StrokeCap.Round)
+        drawLine(color.copy(.6f), Offset(w * .84f, h * .30f), Offset(w * .92f, h * .44f), w * .06f, StrokeCap.Round)
+        drawLine(color.copy(.6f), Offset(w * .84f, h * .56f), Offset(w * .92f, h * .70f), w * .06f, StrokeCap.Round)
+        drawRoundRect(Color.White.copy(.2f), Offset(w * .34f, h * .18f), Size(w * .32f, h * .50f), CornerRadius(w * .04f))
+    }
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderScreen() {
-    val colorScheme = MaterialTheme.colorScheme
     val context     = LocalContext.current
 
     var reminders   by remember { mutableStateOf<List<ReminderItem>>(emptyList()) }
@@ -90,11 +161,6 @@ fun ReminderScreen() {
                     }.sortedWith(compareBy({ it.hour }, { it.minute }))
                     reminders = loaded
                     isLoading = false
-                    // ✅ TIDAK ada scheduleReminder di sini.
-                    // Snapshot listener fire setiap kali Firestore berubah,
-                    // termasuk setelah addReminder/toggleReminder — sehingga
-                    // kalau schedule dilakukan di sini akan dobel dengan
-                    // schedule yang sudah dilakukan di addReminder/toggleReminder.
                 }
             }
         onDispose { reg.remove() }
@@ -113,24 +179,12 @@ fun ReminderScreen() {
             else showPermWarning = true
             return
         }
-
         val reminderId = item.id.hashCode()
-
         remindersCollection().document(item.id).update("isActive", on)
-
         if (on) {
-            // 🔥 pastikan tidak ada sisa alarm lama
             AlarmHelper.cancelReminder(context, reminderId)
-
-            AlarmHelper.scheduleReminder(
-                context    = context,
-                reminderId = reminderId,
-                hour       = item.hour,
-                minute     = item.minute,
-                days       = item.days,
-                label      = item.label,
-                vibration  = item.vibration
-            )
+            AlarmHelper.scheduleReminder(context, reminderId, item.hour, item.minute,
+                item.days, item.label, item.vibration)
         } else {
             AlarmHelper.cancelReminder(context, reminderId)
         }
@@ -139,34 +193,16 @@ fun ReminderScreen() {
     fun addReminder(hour: Int, minute: Int, label: String, days: List<String>, vibration: Boolean) {
         if (isSaving) return
         isSaving = true
-
-        val newItem = ReminderItem(
-            id = "", label = label, hour = hour, minute = minute,
-            days = days, isActive = true, vibration = vibration
-        )
-
+        val newItem = ReminderItem(id = "", label = label, hour = hour, minute = minute,
+            days = days, isActive = true, vibration = vibration)
         remindersCollection().add(newItem.toMap())
             .addOnSuccessListener { docRef ->
                 val reminderId = docRef.id.hashCode()
-
-                // 🔥 cancel semua kemungkinan alarm lama
                 AlarmHelper.cancelReminder(context, reminderId)
-
-                AlarmHelper.scheduleReminder(
-                    context    = context,
-                    reminderId = reminderId,
-                    hour       = hour,
-                    minute     = minute,
-                    days       = days,
-                    label      = label,
-                    vibration  = vibration
-                )
-
+                AlarmHelper.scheduleReminder(context, reminderId, hour, minute, days, label, vibration)
                 isSaving = false
             }
-            .addOnFailureListener {
-                isSaving = false
-            }
+            .addOnFailureListener { isSaving = false }
     }
 
     fun deleteReminder(item: ReminderItem) {
@@ -174,124 +210,292 @@ fun ReminderScreen() {
         remindersCollection().document(item.id).delete()
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
+    Box(modifier = Modifier.fillMaxSize().background(RBgDeep)) {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            contentPadding = PaddingValues(bottom = 40.dp)
         ) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
-                    Text(
-                        text       = "Reminders",
-                        fontSize   = 32.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color      = colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text     = "Keep your hydration flowing throughout the day.",
-                        fontSize = 14.sp,
-                        color    = colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(Modifier.height(20.dp))
-            }
 
+            // ── Hero Header ──────────────────────────────────────────────────
             item {
-                Button(
-                    onClick  = { showAddSheet = true },
+                val infiniteTransition = rememberInfiniteTransition(label = "hero")
+                val floatY by infiniteTransition.animateFloat(
+                    initialValue = 0f, targetValue = -8f,
+                    animationSpec = infiniteRepeatable(
+                        tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse
+                    ), label = "floatY"
+                )
+                val rotBell by infiniteTransition.animateFloat(
+                    initialValue = -3f, targetValue = 3f,
+                    animationSpec = infiniteRepeatable(
+                        tween(2500, easing = FastOutSlowInEasing), RepeatMode.Reverse
+                    ), label = "rotBell"
+                )
+                val glowR by infiniteTransition.animateFloat(
+                    initialValue = .40f, targetValue = .58f,
+                    animationSpec = infiniteRepeatable(
+                        tween(2800, easing = LinearEasing), RepeatMode.Reverse
+                    ), label = "glowR"
+                )
+
+                // Hero card + FAB
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                ) {
+                    // Hero card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colorStops = arrayOf(
+                                        0f    to Color(0xFF0B2240),
+                                        0.55f to Color(0xFF0C3050),
+                                        1f    to Color(0xFF0A3D45)
+                                    ),
+                                    start = Offset.Zero,
+                                    end   = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            )
+                    ) {
+                        // Background glow circles
+                        Canvas(Modifier.fillMaxSize()) {
+                            drawCircle(
+                                Brush.radialGradient(
+                                    listOf(RCyan.copy(.15f), Color.Transparent),
+                                    Offset(size.width * .88f, size.height * .12f),
+                                    size.width * glowR
+                                ),
+                                size.width * glowR,
+                                Offset(size.width * .88f, size.height * .12f)
+                            )
+                            drawCircle(
+                                Brush.radialGradient(
+                                    listOf(RBlue.copy(.20f), Color.Transparent),
+                                    Offset(0f, size.height * .95f),
+                                    size.width * .35f
+                                ),
+                                size.width * .35f,
+                                Offset(0f, size.height * .95f)
+                            )
+                            // Partikel titik
+                            listOf(
+                                floatArrayOf(.18f, .12f), floatArrayOf(.52f, .08f),
+                                floatArrayOf(.38f, .62f), floatArrayOf(.11f, .52f)
+                            ).forEachIndexed { i, (rx, ry) ->
+                                drawCircle(Color.White.copy(.04f + i * .012f), size.width * .008f,
+                                    Offset(size.width * rx, size.height * ry))
+                            }
+                        }
+
+                        // Bell floating di kanan
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 20.dp)
+                                .offset(y = floatY.dp)
+                                .graphicsLayer { rotationZ = rotBell }
+                                .size(110.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(Modifier.fillMaxSize()) {
+                                drawCircle(RCyan.copy(.06f), size.width / 2f)
+                                drawCircle(RCyan.copy(.10f), size.width / 2f,
+                                    style = Stroke(size.width * .022f))
+                                drawCircle(Color.White.copy(.04f), size.width * .36f,
+                                    style = Stroke(size.width * .015f))
+                                drawCircle(Color.White.copy(.05f), size.width * .32f)
+                            }
+                            BellIcon(Modifier.size(46.dp), Color.White.copy(.55f))
+                        }
+
+                        // Teks kiri
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 24.dp)
+                        ) {
+                            // Badge
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color.White.copy(.10f))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    "PENGINGAT",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = RCyan,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Reminders",
+                                fontSize = 34.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RTextPrimary,
+                                letterSpacing = (-1).sp
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Keep your hydration flowing\nthroughout the day.",
+                                fontSize = 12.sp,
+                                color = RTextSec,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    }
+
+                    // FAB Tambah Reminder — di bawah hero card
+                }
+                Spacer(Modifier.height(4.dp))
+
+                // Tombol Tambah Reminder — full width
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .height(54.dp),
-                    shape  = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.primary,
-                        contentColor   = colorScheme.onPrimary
-                    )
+                        .height(58.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF00B4F0), Color(0xFF2979FF))
+                            )
+                        )
+                        .clickable { showAddSheet = true },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("+ Tambah Reminder", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    // Shimmer overlay
+                    Canvas(Modifier.fillMaxSize()) {
+                        drawRect(
+                            Brush.linearGradient(
+                                listOf(Color.Transparent, Color.White.copy(.07f), Color.Transparent),
+                                Offset(size.width * .25f, 0f),
+                                Offset(size.width * .75f, size.height)
+                            )
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(.20f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                        Text(
+                            "Tambah Reminder",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
             }
 
+            // ── Peringatan Izin ──────────────────────────────────────────────
             if (showPermWarning) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        shape    = RoundedCornerShape(16.dp),
-                        colors   = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFFB71C1C).copy(.9f), Color(0xFFEF5350).copy(.8f))
+                                )
+                            )
                     ) {
-                        Row(
-                            modifier          = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("⚠️", fontSize = 20.sp)
+                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(.15f)),
+                                Alignment.Center
+                            ) {
+                                BellIcon(Modifier.size(20.dp), Color.White, muted = true)
+                            }
                             Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Notifikasi diblokir",
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                                Text(
-                                    "Aktifkan notifikasi di pengaturan untuk menerima pengingat.",
-                                    fontSize = 13.sp,
-                                    color    = MaterialTheme.colorScheme.onErrorContainer
-                                )
+                            Column(Modifier.weight(1f)) {
+                                Text("Notifikasi diblokir", fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White, fontSize = 14.sp)
+                                Text("Aktifkan notifikasi di pengaturan untuk menerima pengingat.",
+                                    fontSize = 12.sp, color = Color.White.copy(.75f), lineHeight = 18.sp)
                             }
                         }
                         TextButton(
-                            onClick  = {
+                            onClick = {
                                 val i = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                     .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                                 context.startActivity(i)
                             },
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(end = 8.dp, bottom = 8.dp)
-                        ) { Text("Buka Pengaturan →") }
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp)
+                        ) {
+                            Text("Buka Pengaturan →", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                 }
             }
 
+            // ── Loading ──────────────────────────────────────────────────────
             if (isLoading) {
                 item {
-                    Box(
-                        modifier         = Modifier.fillMaxWidth().padding(40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = colorScheme.primary)
+                    Box(Modifier.fillMaxWidth().padding(48.dp), Alignment.Center) {
+                        CircularProgressIndicator(color = RCyan, strokeWidth = 2.5.dp)
                     }
                 }
             }
 
+            // ── Empty State ──────────────────────────────────────────────────
             if (!isLoading && reminders.isEmpty()) {
                 item {
-                    Box(
-                        modifier         = Modifier.fillMaxWidth().padding(40.dp),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 56.dp, horizontal = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🔕", fontSize = 48.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "Belum ada reminder",
-                                fontWeight = FontWeight.SemiBold,
-                                color      = colorScheme.onSurfaceVariant,
-                                fontSize   = 15.sp
-                            )
-                            Text(
-                                "Klik + Tambah Reminder untuk membuat baru",
-                                color    = colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
+                        Box(
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(CircleShape)
+                                .background(RBgCard),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BellIcon(Modifier.size(40.dp), RTextMuted)
                         }
+                        Spacer(Modifier.height(22.dp))
+                        Text(
+                            "Belum ada reminder",
+                            fontWeight = FontWeight.ExtraBold,
+                            color = RTextPrimary,
+                            fontSize = 18.sp
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            buildAnnotatedString {
+                                append("Klik ")
+                                withStyle(SpanStyle(color = RCyan, fontWeight = FontWeight.Bold)) {
+                                    append("Tambah Reminder")
+                                }
+                                append(" untuk membuat baru")
+                            },
+                            color = RTextSec,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             } else {
@@ -304,45 +508,66 @@ fun ReminderScreen() {
                 }
             }
 
+            // ── Smart Reminders Info Card ────────────────────────────────────
             item {
-                Spacer(Modifier.height(8.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    shape    = RoundedCornerShape(24.dp),
-                    colors   = CardDefaults.cardColors(containerColor = colorScheme.tertiaryContainer)
+                Spacer(Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(RBgCard)
                 ) {
-                    Box {
-                        Text(
-                            text     = "💧",
-                            fontSize = 72.sp,
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 16.dp)
-                                .offset(y = 8.dp),
-                            color    = Color(0x33000000)
-                        )
-                        Column(modifier = Modifier.padding(24.dp)) {
+                    // Drop dekorasi besar kanan
+                    Box(Modifier.align(Alignment.CenterEnd).padding(end = 16.dp).size(80.dp)) {
+                        Canvas(Modifier.fillMaxSize()) {
+                            val cx = size.width / 2f
+                            val path = Path().apply {
+                                moveTo(cx, 0f)
+                                cubicTo(cx + size.width*.5f, size.height*.4f,
+                                    cx + size.width*.5f, size.height*.75f, cx, size.height)
+                                cubicTo(cx - size.width*.5f, size.height*.75f,
+                                    cx - size.width*.5f, size.height*.4f, cx, 0f)
+                                close()
+                            }
+                            drawPath(path, Color.White.copy(.05f))
+                        }
+                    }
+                    Column(Modifier.padding(20.dp).fillMaxWidth(.75f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(RCyan.copy(.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                ClockIconR(Modifier.size(20.dp), RCyan)
+                            }
                             Text(
-                                text       = "Smart Reminders",
-                                fontSize   = 16.sp,
+                                "Smart Reminders",
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color      = colorScheme.onTertiaryContainer
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                text       = "We'll space out your alerts based on your daily goal and waking hours for optimal cellular hydration.",
-                                fontSize   = 13.sp,
-                                color      = colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
-                                lineHeight = 20.sp,
-                                modifier   = Modifier.fillMaxWidth(0.72f)
+                                color = RTextPrimary
                             )
                         }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "We'll space out your alerts based on your daily goal and waking hours for optimal cellular hydration.",
+                            fontSize = 13.sp,
+                            color = RTextSec,
+                            lineHeight = 20.sp
+                        )
                     }
                 }
                 Spacer(Modifier.height(16.dp))
             }
         }
 
+        // ── Bottom Sheet ─────────────────────────────────────────────────────
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
@@ -369,99 +594,140 @@ fun ReminderCard(
     onToggle : (Boolean) -> Unit,
     onDelete : () -> Unit
 ) {
-    val colorScheme       = MaterialTheme.colorScheme
     val timeStr           = String.format("%02d:%02d", item.hour, item.minute)
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    // ✅ FIX #4: State aktif & nonaktif yang konsisten secara visual — tidak "jauh berubah"
-    // Prinsip: card nonaktif tetap punya struktur yang sama, hanya lebih redup & ada badge
-    val cardBg    = colorScheme.surface  // selalu sama, bedanya cuma opacity konten
-    val alpha     = if (item.isActive) 1f else 0.45f
-    val timeColor = colorScheme.onSurface.copy(alpha = alpha)
-    val labelColor = if (item.isActive) colorScheme.secondary
-    else colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    val contentAlpha by animateFloatAsState(
+        targetValue   = if (item.isActive) 1f else 0.45f,
+        animationSpec = tween(300),
+        label         = "alpha"
+    )
 
-    Card(
-        modifier  = Modifier
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        shape     = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (item.isActive) 2.dp else 0.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = if (item.isActive) colorScheme.surface
-            else colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+            .padding(horizontal = 20.dp, vertical = 7.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                if (item.isActive)
+                    Brush.linearGradient(
+                        listOf(Color(0xFF0F2347), Color(0xFF102B54)),
+                        Offset.Zero,
+                        Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    )
+                else
+                    Brush.linearGradient(
+                        listOf(RBgCard, RBgCard),
+                        Offset.Zero, Offset.Zero
+                    )
+            )
     ) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        // Dekorasi glow sudut kanan atas
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(
+                if (item.isActive) RCyan.copy(.07f) else Color.White.copy(.02f),
+                size.width * .32f,
+                Offset(size.width * .94f, -size.height * .18f)
+            )
+        }
+        // Accent bar kiri
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(72.dp)
+                .align(Alignment.CenterStart)
+                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                .background(
+                    if (item.isActive)
+                        Brush.verticalGradient(listOf(RCyan, RBlue))
+                    else
+                        Brush.verticalGradient(listOf(RTextMuted, RTextMuted))
+                )
+        )
+
+        Column(Modifier.padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 14.dp)) {
             Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                Modifier.fillMaxWidth(),
+                Arrangement.SpaceBetween,
+                Alignment.CenterVertically
             ) {
                 Column {
-                    // ✅ FIX #4: Badge "NONAKTIF" lebih rapi — sama posisi, tidak menggeser layout
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier              = Modifier.padding(bottom = 4.dp)
-                    ) {
-                        if (!item.isActive) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = colorScheme.errorContainer.copy(alpha = 0.6f)
-                            ) {
-                                Text(
-                                    text          = "NONAKTIF",
-                                    fontSize      = 9.sp,
-                                    fontWeight    = FontWeight.Bold,
-                                    color         = colorScheme.onErrorContainer.copy(alpha = 0.75f),
-                                    letterSpacing = 1.sp,
-                                    modifier      = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
+                    // Badge status
+                    if (!item.isActive) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFB71C1C).copy(.45f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text("NONAKTIF", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFFF8A80), letterSpacing = 1.sp)
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(RCyan.copy(.12f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text("AKTIF", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
+                                color = RCyan, letterSpacing = 1.sp)
                         }
                     }
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text           = timeStr,
-                        fontSize       = 36.sp,
-                        fontWeight     = FontWeight.ExtraBold,
-                        color          = timeColor,
-                        textDecoration = TextDecoration.None
+                        text          = timeStr,
+                        fontSize      = 38.sp,
+                        fontWeight    = FontWeight.ExtraBold,
+                        color         = if (item.isActive) RTextPrimary else RTextPrimary.copy(.35f),
+                        textDecoration= TextDecoration.None,
+                        letterSpacing = (-1).sp
                     )
-                    Text(text = item.label, fontSize = 12.sp, color = labelColor)
+                    Text(
+                        text       = item.label,
+                        fontSize   = 12.sp,
+                        color      = if (item.isActive) RCyan.copy(.85f) else RTextMuted,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(
-                            imageVector        = Icons.Filled.Delete,
-                            contentDescription = "Hapus reminder",
-                            tint               = colorScheme.error.copy(
-                                alpha = if (item.isActive) 0.7f else 0.4f
-                            )
-                        )
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Switch(
                         checked         = item.isActive,
                         onCheckedChange = onToggle,
                         colors          = SwitchDefaults.colors(
                             checkedThumbColor    = Color.White,
-                            checkedTrackColor    = colorScheme.secondary,
-                            uncheckedThumbColor  = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            uncheckedTrackColor  = colorScheme.outline.copy(alpha = 0.3f),
-                            uncheckedBorderColor = colorScheme.outline.copy(alpha = 0.3f)
+                            checkedTrackColor    = RCyan,
+                            uncheckedThumbColor  = Color.White.copy(.4f),
+                            uncheckedTrackColor  = Color.White.copy(.08f),
+                            uncheckedBorderColor = Color.White.copy(.12f)
                         )
                     )
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (item.isActive) Color(0xFFEF5350).copy(.12f)
+                                else Color.White.copy(.04f)
+                            )
+                            .clickable { showDeleteConfirm = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Hapus",
+                            tint = if (item.isActive) Color(0xFFEF5350).copy(.75f) else RTextMuted,
+                            modifier = Modifier.size(16.dp))
+                    }
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val dayLabels = when {
                     item.days.contains("EVERYDAY") -> listOf("EVERYDAY")
-                    item.days.contains("WEEKENDS") -> listOf("WEEKENDS")
-                    else                           -> item.days
+                    item.days.contains("WEEKENDS")  -> listOf("WEEKENDS")
+                    else                            -> item.days
                 }
                 dayLabels.forEach { day ->
                     DayChip(label = day, isActive = item.isActive)
@@ -490,28 +756,18 @@ fun ReminderCard(
 // ── Day Chip ──────────────────────────────────────────────────────────────────
 @Composable
 fun DayChip(label: String, isActive: Boolean) {
-    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(
-                if (isActive) colorScheme.secondaryContainer
-                else colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-            .border(
-                width = if (!isActive) 1.dp else 0.dp,
-                color = if (!isActive) colorScheme.outline.copy(alpha = 0.25f) else Color.Transparent,
-                shape = RoundedCornerShape(20.dp)
-            )
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .background(if (isActive) RCyan.copy(.14f) else Color.White.copy(.05f))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text       = label,
             fontSize   = 11.sp,
             fontWeight = FontWeight.SemiBold,
-            color      = if (isActive) colorScheme.onSecondaryContainer
-            else colorScheme.onSurface.copy(alpha = 0.3f)
+            color      = if (isActive) RCyan else RTextMuted
         )
     }
 }
@@ -524,27 +780,37 @@ fun NumberPicker(
     onDown: () -> Unit,
     label : String
 ) {
-    val colorScheme = MaterialTheme.colorScheme
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(onClick = onUp) {
-            Text("▲", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(RBlue.copy(.18f))
+                .clickable { onUp() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("▲", fontSize = 14.sp, color = RCyan)
         }
+        Spacer(Modifier.height(6.dp))
         Text(
             text       = String.format("%02d", value),
             fontSize   = 48.sp,
             fontWeight = FontWeight.ExtraBold,
-            color      = colorScheme.onSurface
+            color      = RTextPrimary
         )
-        IconButton(onClick = onDown) {
-            Text("▼", fontSize = 16.sp, color = colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(RBlue.copy(.18f))
+                .clickable { onDown() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("▼", fontSize = 14.sp, color = RCyan)
         }
-        Text(
-            text          = label,
-            fontSize      = 11.sp,
-            color         = colorScheme.onSurfaceVariant,
-            fontWeight    = FontWeight.SemiBold,
-            letterSpacing = 1.sp
-        )
+        Spacer(Modifier.height(4.dp))
+        Text(text = label, fontSize = 10.sp, color = RTextSec, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
     }
 }
 
@@ -554,8 +820,6 @@ fun AddReminderSheet(
     onDismiss : () -> Unit,
     onSave    : (hour: Int, minute: Int, label: String, days: List<String>, vibration: Boolean) -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-
     var displayHour    by remember { mutableIntStateOf(8) }
     var selectedMinute by remember { mutableIntStateOf(0) }
     var isAm           by remember { mutableStateOf(true) }
@@ -566,7 +830,6 @@ fun AddReminderSheet(
     val dayKeys      = listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
     var selectedDays by remember { mutableStateOf(setOf<String>()) }
 
-    // ✅ Konversi 12-jam → 24-jam dengan derivedStateOf (bukan property getter)
     val hour24 by remember {
         derivedStateOf {
             when {
@@ -583,27 +846,38 @@ fun AddReminderSheet(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 32.dp)
+            .padding(bottom = 36.dp)
     ) {
+        // Drag handle
         Box(
             modifier = Modifier
-                .padding(top = 8.dp)
-                .width(40.dp)
+                .padding(top = 12.dp)
+                .width(36.dp)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(colorScheme.outline)
+                .background(RTextMuted.copy(.5f))
                 .align(Alignment.CenterHorizontally)
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(22.dp))
 
-        Text(
-            text       = "Tambah Reminder",
-            fontSize   = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color      = colorScheme.onSurface,
-            modifier   = Modifier.padding(horizontal = 24.dp)
-        )
+        // Header sheet
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            Arrangement.SpaceBetween,
+            Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Tambah Reminder", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = RTextPrimary)
+                Text("Atur waktu pengingat minum air", fontSize = 12.sp, color = RTextSec)
+            }
+            Box(
+                Modifier.size(38.dp).clip(CircleShape).background(RBlue.copy(.14f)),
+                Alignment.Center
+            ) {
+                BellIcon(Modifier.size(18.dp), RBlue)
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -613,10 +887,14 @@ fun AddReminderSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(vertical = 16.dp),
+                .background(RBgCard)
+                .padding(vertical = 22.dp),
             contentAlignment = Alignment.Center
         ) {
+            Canvas(Modifier.matchParentSize()) {
+                drawCircle(RCyan.copy(.05f), size.width * .32f,
+                    Offset(size.width * .88f, size.height * .3f))
+            }
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -627,144 +905,102 @@ fun AddReminderSheet(
                     onDown = { displayHour = if (displayHour == 1) 12 else displayHour - 1 },
                     label  = "JAM"
                 )
-
-                // ✅ FIX: padding(horizontal, bottom) tidak valid — gunakan start/end/bottom
-                Text(
-                    text       = ":",
-                    fontSize   = 48.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = colorScheme.onSurface,
-                    modifier   = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 24.dp)
-                )
-
+                Text(":", fontSize = 48.sp, fontWeight = FontWeight.ExtraBold,
+                    color = RTextPrimary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp).offset(y = (-10).dp))
                 NumberPicker(
                     value  = selectedMinute,
                     onUp   = { selectedMinute = if (selectedMinute == 59) 0 else selectedMinute + 1 },
                     onDown = { selectedMinute = if (selectedMinute == 0) 59 else selectedMinute - 1 },
                     label  = "MENIT"
                 )
-
-                Spacer(Modifier.width(16.dp))
-
-                // ✅ FIX: Surface(onClick) → Box + clickable
+                Spacer(Modifier.width(20.dp))
+                // AM/PM
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
-                            .width(56.dp)
-                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                            .background(if (isAm) colorScheme.primary else colorScheme.surface)
+                            .width(52.dp)
+                            .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                            .background(if (isAm) RCyan else Color.White.copy(.08f))
                             .clickable { isAm = true }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text       = "AM",
-                            fontWeight = FontWeight.Bold,
-                            fontSize   = 14.sp,
-                            color      = if (isAm) colorScheme.onPrimary else colorScheme.onSurfaceVariant
-                        )
+                        Text("AM", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
+                            color = if (isAm) RBgDeep else RTextSec)
                     }
                     Box(
                         modifier = Modifier
-                            .width(56.dp)
-                            .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
-                            .background(if (!isAm) colorScheme.primary else colorScheme.surface)
+                            .width(52.dp)
+                            .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
+                            .background(if (!isAm) RCyan else Color.White.copy(.08f))
                             .clickable { isAm = false }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text       = "PM",
-                            fontWeight = FontWeight.Bold,
-                            fontSize   = 14.sp,
-                            color      = if (!isAm) colorScheme.onPrimary else colorScheme.onSurfaceVariant
-                        )
+                        Text("PM", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
+                            color = if (!isAm) RBgDeep else RTextSec)
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text     = "🕐  Geser untuk menyesuaikan waktu",
-                fontSize = 12.sp,
-                color    = colorScheme.onSurfaceVariant
-            )
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth(), Arrangement.Center) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                ClockIconR(Modifier.size(12.dp), RTextMuted)
+                Text("Geser untuk menyesuaikan waktu", fontSize = 11.sp, color = RTextSec)
+            }
         }
 
         Spacer(Modifier.height(24.dp))
 
         // ── Nama Pengingat ────────────────────────────────────────────────────
-        Text(
-            text          = "NAMA PENGINGAT",
-            fontSize      = 11.sp,
-            fontWeight    = FontWeight.Bold,
-            color         = colorScheme.onSurfaceVariant,
-            letterSpacing = 1.sp,
-            modifier      = Modifier.padding(horizontal = 24.dp)
-        )
+        Row(Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(4.dp).clip(CircleShape).background(RCyan))
+            Text("NAMA PENGINGAT", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                color = RTextSec, letterSpacing = 1.sp)
+        }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value         = reminderLabel,
             onValueChange = { reminderLabel = it },
-            placeholder   = {
-                Text("Minum Pagi", color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-            },
-            shape      = RoundedCornerShape(16.dp),
-            singleLine = true,
-            modifier   = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = colorScheme.primary,
-                unfocusedBorderColor = colorScheme.outline.copy(alpha = 0.4f)
+            placeholder   = { Text("Minum Pagi", color = RTextMuted) },
+            shape         = RoundedCornerShape(16.dp),
+            singleLine    = true,
+            modifier      = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            colors        = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor   = RCyan,
+                unfocusedBorderColor = RTextMuted.copy(.4f),
+                focusedTextColor     = RTextPrimary,
+                unfocusedTextColor   = RTextPrimary
             )
         )
 
         Spacer(Modifier.height(24.dp))
 
         // ── Hari Pengulangan ──────────────────────────────────────────────────
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Text(
-                text          = "ULANGI SETIAP HARI",
-                fontSize      = 11.sp,
-                fontWeight    = FontWeight.Bold,
-                color         = colorScheme.onSurfaceVariant,
-                letterSpacing = 1.sp
-            )
-            TextButton(
-                onClick = {
-                    selectedDays = if (selectedDays.size == 7) emptySet() else dayKeys.toSet()
-                }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(4.dp).clip(CircleShape).background(RCyan))
+                Text("ULANGI SETIAP HARI", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                    color = RTextSec, letterSpacing = 1.sp)
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(RBlue.copy(.12f))
+                    .clickable { selectedDays = if (selectedDays.size == 7) emptySet() else dayKeys.toSet() }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text(
-                    text       = "Pilih Semua",
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = colorScheme.primary
-                )
+                Text("Pilih Semua", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = RCyan)
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // ✅ FIX: Surface(onClick) → Box + clickable
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), Arrangement.SpaceBetween) {
             allDayLabels.forEachIndexed { i, dayLabel ->
                 val key        = dayKeys[i]
                 val isSelected = key in selectedDays
@@ -773,20 +1009,16 @@ fun AddReminderSheet(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isSelected) colorScheme.primary else colorScheme.surfaceVariant
+                            if (isSelected)
+                                Brush.linearGradient(listOf(RBlue, RCyan.copy(.8f)))
+                            else
+                                Brush.linearGradient(listOf(RBgCard, RBgCard))
                         )
-                        .clickable {
-                            selectedDays = if (isSelected) selectedDays - key else selectedDays + key
-                        },
+                        .clickable { selectedDays = if (isSelected) selectedDays - key else selectedDays + key },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text       = dayLabel,
-                        fontSize   = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = if (isSelected) colorScheme.onPrimary
-                        else colorScheme.onSurfaceVariant
-                    )
+                    Text(dayLabel, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                        color = if (isSelected) Color.White else RTextSec)
                 }
             }
         }
@@ -795,43 +1027,37 @@ fun AddReminderSheet(
 
         // ── Getaran ───────────────────────────────────────────────────────────
         Row(
-            modifier          = Modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (vibrationOn) RBlue.copy(.10f) else RBgCard)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(colorScheme.primary.copy(alpha = 0.15f)),
+                    .background(if (vibrationOn) RCyan.copy(.14f) else RTextMuted.copy(.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("📳", fontSize = 22.sp)
+                VibrateIcon(Modifier.size(22.dp), if (vibrationOn) RCyan else RTextMuted)
             }
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Getaran",
-                    fontWeight = FontWeight.Bold,
-                    fontSize   = 15.sp,
-                    color      = colorScheme.onSurface
-                )
-                Text(
-                    "Aktifkan getaran saat alarm berbunyi",
-                    fontSize = 12.sp,
-                    color    = colorScheme.onSurfaceVariant
-                )
+            Column(Modifier.weight(1f)) {
+                Text("Getaran", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = RTextPrimary)
+                Text("Aktifkan getaran saat alarm berbunyi", fontSize = 12.sp, color = RTextSec)
             }
             Switch(
                 checked         = vibrationOn,
                 onCheckedChange = { vibrationOn = it },
                 colors          = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = colorScheme.secondary
+                    checkedThumbColor    = Color.White,
+                    checkedTrackColor    = RCyan,
+                    uncheckedThumbColor  = RTextMuted.copy(.6f),
+                    uncheckedTrackColor  = RTextMuted.copy(.18f),
+                    uncheckedBorderColor = RTextMuted.copy(.18f)
                 )
             )
         }
@@ -839,25 +1065,33 @@ fun AddReminderSheet(
         Spacer(Modifier.height(28.dp))
 
         // ── Tombol Simpan ─────────────────────────────────────────────────────
-        Button(
-            onClick  = {
-                val label = reminderLabel.ifBlank { "Minum Air" }
-                onSave(hour24, selectedMinute, label, selectedDays.toList(), vibrationOn)
-            },
-            enabled  = canSave,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .height(54.dp),
-            shape  = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor         = colorScheme.primary,
-                contentColor           = colorScheme.onPrimary,
-                disabledContainerColor = colorScheme.surfaceVariant,
-                disabledContentColor   = colorScheme.onSurfaceVariant
-            )
+                .height(54.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(
+                    if (canSave)
+                        Brush.horizontalGradient(listOf(RBlue, RTeal))
+                    else
+                        Brush.horizontalGradient(listOf(RBgCard, RBgCard))
+                )
+                .clickable(enabled = canSave) {
+                    val label = reminderLabel.ifBlank { "Minum Air" }
+                    onSave(hour24, selectedMinute, label, selectedDays.toList(), vibrationOn)
+                },
+            contentAlignment = Alignment.Center
         ) {
-            Text("✓  Simpan Reminder", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BellIcon(Modifier.size(18.dp), if (canSave) Color.White else RTextMuted)
+                Text(
+                    "Simpan Reminder",
+                    fontSize   = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color      = if (canSave) Color.White else RTextMuted
+                )
+            }
         }
     }
 }

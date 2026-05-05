@@ -28,16 +28,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── Palet ────────────────────────────────────────────────────────────────────
-private val NavyDeep   = Color(0xFF0A1F5C)
-private val NavyMid    = Color(0xFF0D3B8E)
-private val NavyCard   = Color(0xFF112870)
-private val CardBorder = Color(0xFF1E3FA0)
-private val WaterCyan  = Color(0xFF4FC3F7)
-private val WaterBlue  = Color(0xFF29B6F6)
-private val AccentMint = Color(0xFF00E5CC)
+// ── Palet senada halaman Reminder (dark navy + teal/cyan) ─────────────────────
+private val NavyDeep   = Color(0xFF0B1A35)   // bg utama — navy medium seperti reminder
+private val NavyMid    = Color(0xFF0E2040)   // layer 2
+private val NavyCard   = Color(0xFF112545)   // card surface
+private val CardBorder = Color(0xFF1B3560)   // border subtle
+private val WaterCyan  = Color(0xFF00BFA5)   // teal utama — aksen reminder
+private val WaterBlue  = Color(0xFF26C6DA)   // cyan terang
+private val AccentMint = Color(0xFF4DD0C4)   // teal muda
 private val TextWhite  = Color(0xFFFFFFFF)
-private val TextSub    = Color(0xFFB0C4E8)
+private val TextSub    = Color(0xFF8FA8C8)   // secondary text
 
 data class WaterOption(
     val ml    : Int,
@@ -121,7 +121,7 @@ fun TambahScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            Brush.verticalGradient(listOf(Color(0xFF1A3A8F), Color(0xFF0D2B7A)))
+                            Brush.verticalGradient(listOf(Color(0xFF0E2A4A), Color(0xFF0B1E38)))
                         )
                 )
 
@@ -142,7 +142,7 @@ fun TambahScreen(
                     path.lineTo(size.width, size.height)
                     path.lineTo(0f, size.height)
                     path.close()
-                    drawPath(path, Color(0xFF0A1F5C))
+                    drawPath(path, Color(0xFF0B1A35))
                 }
 
                 // Handle bar
@@ -362,7 +362,7 @@ fun TambahScreen(
                         .scale(pulseScale)
                         .height(50.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Color.White)
+                        .background(Brush.horizontalGradient(listOf(WaterCyan, WaterBlue)))
                         .clickable {
                             val jumlah = when {
                                 customInput.isNotEmpty() -> customInput.toIntOrNull() ?: 0
@@ -377,7 +377,7 @@ fun TambahScreen(
                         Box(
                             modifier = Modifier
                                 .size(24.dp)
-                                .background(NavyDeep, CircleShape),
+                                .background(Color.White.copy(alpha = 0.20f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
@@ -386,7 +386,7 @@ fun TambahScreen(
                         Text(
                             "Simpan",
                             style = MaterialTheme.typography.titleSmall.copy(
-                                color = NavyDeep, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.4.sp
+                                color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.4.sp
                             )
                         )
                     }

@@ -25,18 +25,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 
-// ── Warna tema navy + aksen air ───────────────────────────────────────────────
-private val WgNavyDark   = Color(0xFF0A1F5C)
-private val WgNavyMid    = Color(0xFF0D3B8E)
-private val WgNavyCard   = Color(0xFF112870)
-private val WgNavyDeep   = Color(0xFF0D2B6B)
-private val WgNavyBrd    = Color(0xFF1E3FA0)
-private val WgWater1     = Color(0xFF4FC3F7)
-private val WgTeal       = Color(0xFF26C6DA)
-private val WgGray       = Color(0xFF7A9CC5)
-private val WgGrayDim    = Color(0xFF4A6B9A)
-private val WgGreen      = Color(0xFF43E97B)
-private val WgAmber      = Color(0xFFFFB300)
+// ── Warna tema senada halaman Statistik (navy biru medium + aksen teal/cyan) ──
+private val WgNavyDark   = Color(0xFF0B1A35)   // bg utama navy — sama seperti statistik
+private val WgNavyMid    = Color(0xFF0E2040)   // navy layer 2
+private val WgNavyCard   = Color(0xFF112545)   // card surface
+private val WgNavyDeep   = Color(0xFF0D1E38)   // elemen bar kosong
+private val WgNavyBrd    = Color(0xFF1B3560)   // border kartu
+private val WgWater1     = Color(0xFF00BFA5)   // teal utama (aksen statistik)
+private val WgTeal       = Color(0xFF26C6DA)   // cyan terang (bar chart statistik)
+private val WgGray       = Color(0xFF8FA8C8)   // secondary text
+private val WgGrayDim    = Color(0xFF4A6880)   // muted text
+private val WgGreen      = Color(0xFF43E97B)   // hijau tetap sama (target tercapai)
+private val WgAmber      = Color(0xFFFFB300)   // amber tetap sama (garis target)
 
 // Label hari dalam seminggu (Senin=0 ... Minggu=6)
 private val DAY_LABELS = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")

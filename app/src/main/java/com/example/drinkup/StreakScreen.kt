@@ -322,7 +322,7 @@ fun StreakScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), colorScheme.background)
+                    listOf(Color(0xFF0B1A35), Color(0xFF0E2040), Color(0xFF0B1A35))
                 )
             )
     ) {
@@ -338,7 +338,7 @@ fun StreakScreen(
                     Text(
                         "DrinkUp",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color         = Color(0xFF1565C0),
+                            color         = Color(0xFF00BFA5),
                             fontWeight    = FontWeight.Bold,
                             letterSpacing = 1.sp
                         )
@@ -346,7 +346,7 @@ fun StreakScreen(
                     Text(
                         "Streak Kamu",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            color      = Color(0xFF0D1B4A),
+                            color      = Color.White,
                             fontWeight = FontWeight.ExtraBold
                         )
                     )
@@ -356,7 +356,7 @@ fun StreakScreen(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .size(44.dp)
-                        .background(Color(0xFF1565C0), RoundedCornerShape(14.dp))
+                        .background(Color(0xFF112545), RoundedCornerShape(14.dp))
                 ) {
                     Icon(
                         Icons.Rounded.ArrowBack, null,
@@ -380,10 +380,11 @@ fun StreakScreen(
                         .clip(RoundedCornerShape(32.dp))
                         .background(
                             Brush.radialGradient(
-                                colors = listOf(Color(0xFFBBDEFB), Color(0xFF90CAF9), Color(0xFF64B5F6)),
+                                colors = listOf(Color(0xFF112545), Color(0xFF0E2040), Color(0xFF0B1A35)),
                                 radius = 800f
                             )
                         )
+                        .border(1.dp, Color(0xFF1B3560), RoundedCornerShape(32.dp))
                         .padding(vertical = 28.dp, horizontal = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -393,21 +394,21 @@ fun StreakScreen(
                             .size(14.dp)
                             .align(Alignment.TopStart)
                             .offset(x = 18.dp, y = 18.dp),
-                        color    = Color(0xFF1565C0).copy(alpha = 0.5f)
+                        color    = Color(0xFF00BFA5).copy(alpha = 0.5f)
                     )
                     SparkleDecor(
                         modifier = Modifier
                             .size(10.dp)
                             .align(Alignment.TopEnd)
                             .offset(x = (-24).dp, y = 28.dp),
-                        color    = Color.White.copy(alpha = 0.7f)
+                        color    = Color(0xFF26C6DA).copy(alpha = 0.6f)
                     )
                     SparkleDecor(
                         modifier = Modifier
                             .size(8.dp)
                             .align(Alignment.BottomStart)
                             .offset(x = 40.dp, y = (-20).dp),
-                        color    = Color.White.copy(alpha = 0.55f)
+                        color    = Color(0xFF4DD0C4).copy(alpha = 0.45f)
                     )
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -421,13 +422,17 @@ fun StreakScreen(
                                         bottomEnd  = 16.dp, bottomStart = 4.dp
                                     )
                                 )
-                                .background(Color.White.copy(alpha = 0.92f))
+                                .background(Color(0xFF112545).copy(alpha = 0.95f))
+                                .border(1.dp, Color(0xFF00BFA5).copy(alpha = 0.4f), RoundedCornerShape(
+                                    topStart = 16.dp, topEnd = 16.dp,
+                                    bottomEnd = 16.dp, bottomStart = 4.dp
+                                ))
                                 .padding(horizontal = 16.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 motivationText,
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color      = Color(0xFF0D47A1),
+                                    color      = Color(0xFF00BFA5),
                                     fontWeight = FontWeight.SemiBold
                                 ),
                                 textAlign = TextAlign.Center
@@ -436,20 +441,20 @@ fun StreakScreen(
 
                         Spacer(Modifier.height(8.dp))
 
-                        // Mascot
+                        // Mascot — dibesarkan
                         MascotAnimation(
-                            modifier = Modifier.size(140.dp),
+                            modifier = Modifier.size(180.dp),
                             streak   = streak
                         )
 
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(2.dp))
 
                         // Angka streak
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 "$streak",
                                 style = MaterialTheme.typography.displayMedium.copy(
-                                    color      = Color(0xFF0D47A1),
+                                    color      = Color.White,
                                     fontWeight = FontWeight.Black
                                 )
                             )
@@ -457,7 +462,7 @@ fun StreakScreen(
                             Text(
                                 "hari",
                                 style = MaterialTheme.typography.headlineSmall.copy(
-                                    color      = Color(0xFF1565C0),
+                                    color      = Color(0xFF00BFA5),
                                     fontWeight = FontWeight.Bold
                                 ),
                                 modifier = Modifier.padding(bottom = 6.dp)
@@ -466,7 +471,7 @@ fun StreakScreen(
                         Text(
                             "Berturut-turut",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color      = Color(0xFF1565C0),
+                                color      = Color(0xFF8FA8C8),
                                 fontWeight = FontWeight.Medium
                             )
                         )
@@ -478,12 +483,12 @@ fun StreakScreen(
                         if (levelStep > 0) {
                             Surface(
                                 shape = RoundedCornerShape(50),
-                                color = Color(0xFF1565C0).copy(alpha = 0.15f)
+                                color = Color(0xFF00BFA5).copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     "⭐ Level ${levelStep + 1}",
                                     style = MaterialTheme.typography.labelMedium.copy(
-                                        color      = Color(0xFF0D47A1),
+                                        color      = Color(0xFF4DD0C4),
                                         fontWeight = FontWeight.ExtraBold
                                     ),
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
@@ -499,7 +504,7 @@ fun StreakScreen(
                 Text(
                     "MINGGU INI",
                     style = MaterialTheme.typography.labelLarge.copy(
-                        color         = Color(0xFF0D1B4A).copy(alpha = 0.5f),
+                        color         = Color(0xFF8FA8C8),
                         fontWeight    = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
                     )
@@ -513,9 +518,9 @@ fun StreakScreen(
                     weekDays.forEachIndexed { index, (label, dayNum, achieved) ->
                         val isToday  = index == todayDow
                         val bgBrush: Brush = when {
-                            isToday  -> Brush.verticalGradient(listOf(Color.White, Color(0xFFE3F2FD)))
-                            achieved -> Brush.verticalGradient(listOf(Color(0xFF42A5F5), Color(0xFF1565C0)))
-                            else     -> Brush.verticalGradient(listOf(Color(0xFF90CAF9), Color(0xFF64B5F6)))
+                            isToday  -> Brush.verticalGradient(listOf(Color(0xFF112545), Color(0xFF0E2040)))
+                            achieved -> Brush.verticalGradient(listOf(Color(0xFF00BFA5), Color(0xFF00897B)))
+                            else     -> Brush.verticalGradient(listOf(Color(0xFF0F2040), Color(0xFF0B1A35)))
                         }
                         Box(
                             modifier = Modifier
@@ -524,7 +529,7 @@ fun StreakScreen(
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(brush = bgBrush)
                                 .then(
-                                    if (isToday) Modifier.border(2.dp, Color(0xFF1565C0), RoundedCornerShape(14.dp))
+                                    if (isToday) Modifier.border(2.dp, Color(0xFF00BFA5), RoundedCornerShape(14.dp))
                                     else Modifier
                                 ),
                             contentAlignment = Alignment.Center
@@ -536,7 +541,7 @@ fun StreakScreen(
                                 Text(
                                     label,
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color      = if (isToday) Color(0xFF1565C0) else Color.White.copy(alpha = 0.9f),
+                                        color      = if (isToday) Color(0xFF00BFA5) else Color.White.copy(alpha = 0.9f),
                                         fontWeight = FontWeight.Bold,
                                         fontSize   = 9.sp
                                     )
@@ -547,14 +552,14 @@ fun StreakScreen(
                                 } else {
                                     WaterDropIcon(
                                         modifier = Modifier.size(16.dp),
-                                        color    = if (isToday) Color(0xFF1565C0) else Color.White.copy(alpha = 0.7f)
+                                        color    = if (isToday) Color(0xFF00BFA5) else Color.White.copy(alpha = 0.7f)
                                     )
                                 }
                                 Spacer(Modifier.height(3.dp))
                                 Text(
                                     "$dayNum",
                                     style = MaterialTheme.typography.labelMedium.copy(
-                                        color      = if (isToday) Color(0xFF0D1B4A) else Color.White,
+                                        color      = if (isToday) Color(0xFF00BFA5) else Color.White,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 )
@@ -563,7 +568,7 @@ fun StreakScreen(
                                     modifier = Modifier
                                         .size(4.dp)
                                         .background(
-                                            if (isToday) Color(0xFF1565C0) else Color.White.copy(alpha = 0.5f),
+                                            if (isToday) Color(0xFF00BFA5) else Color.White.copy(alpha = 0.5f),
                                             CircleShape
                                         )
                                 )
@@ -579,12 +584,12 @@ fun StreakScreen(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Best Streak — biru gelap
+                    // Best Streak — teal dark
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Brush.verticalGradient(listOf(Color(0xFF1E88E5), Color(0xFF0D47A1))))
+                            .background(Brush.verticalGradient(listOf(Color(0xFF00BFA5), Color(0xFF00897B))))
                             .padding(14.dp)
                     ) {
                         Column(
@@ -605,34 +610,36 @@ fun StreakScreen(
 
                     // Gelas Bulan Ini
                     Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp),
-                        color = colorScheme.surface, shadowElevation = 2.dp) {
-                        Column(modifier = Modifier.padding(14.dp),
+                        color = Color(0xFF112545), shadowElevation = 0.dp) {
+                        Column(modifier = Modifier.padding(14.dp)
+                            .border(1.dp, Color(0xFF1B3560), RoundedCornerShape(20.dp)),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             WaterDropIcon(modifier = Modifier.size(26.dp))
                             Spacer(Modifier.height(6.dp))
                             Text("$glassesMonth",
                                 style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = colorScheme.onSurface, fontWeight = FontWeight.ExtraBold))
+                                    color = Color.White, fontWeight = FontWeight.ExtraBold))
                             Text("Gelas Bulan Ini",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = colorScheme.onSurfaceVariant, textAlign = TextAlign.Center),
+                                    color = Color(0xFF8FA8C8), textAlign = TextAlign.Center),
                                 textAlign = TextAlign.Center)
                         }
                     }
 
                     // Rata-rata/hari
                     Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp),
-                        color = colorScheme.surface, shadowElevation = 2.dp) {
-                        Column(modifier = Modifier.padding(14.dp),
+                        color = Color(0xFF112545), shadowElevation = 0.dp) {
+                        Column(modifier = Modifier.padding(14.dp)
+                            .border(1.dp, Color(0xFF1B3560), RoundedCornerShape(20.dp)),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             BarChartIcon(modifier = Modifier.size(26.dp))
                             Spacer(Modifier.height(6.dp))
                             Text("${avgPerDay}L",
                                 style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = colorScheme.onSurface, fontWeight = FontWeight.ExtraBold))
+                                    color = Color.White, fontWeight = FontWeight.ExtraBold))
                             Text("Rata-rata/hari",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = colorScheme.onSurfaceVariant, textAlign = TextAlign.Center),
+                                    color = Color(0xFF8FA8C8), textAlign = TextAlign.Center),
                                 textAlign = TextAlign.Center)
                         }
                     }
@@ -642,8 +649,10 @@ fun StreakScreen(
 
                 // ── PROGRESS MILESTONE (LOGIC TIDAK DIUBAH) ───────────────────
                 Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),
-                    color = colorScheme.surface, shadowElevation = 2.dp) {
-                    Column(modifier = Modifier.padding(18.dp)) {
+                    color = Color(0xFF112545), shadowElevation = 0.dp) {
+                    Column(modifier = Modifier
+                        .border(1.dp, Color(0xFF1B3560), RoundedCornerShape(22.dp))
+                        .padding(18.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment     = Alignment.CenterVertically) {
@@ -652,13 +661,13 @@ fun StreakScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Text("Menuju Streak $nextMilestone Hari",
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = colorScheme.onSurface, fontWeight = FontWeight.SemiBold))
+                                        color = Color.White, fontWeight = FontWeight.SemiBold))
                             }
                             Surface(shape = RoundedCornerShape(50),
-                                color = Color(0xFF1565C0).copy(alpha = 0.10f)) {
+                                color = Color(0xFF00BFA5).copy(alpha = 0.15f)) {
                                 Text("$streak/$nextMilestone",
                                     style    = MaterialTheme.typography.labelMedium.copy(
-                                        color = Color(0xFF1565C0), fontWeight = FontWeight.ExtraBold),
+                                        color = Color(0xFF00BFA5), fontWeight = FontWeight.ExtraBold),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
                             }
                         }
@@ -669,7 +678,7 @@ fun StreakScreen(
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(colorScheme.surfaceVariant)) {
+                            .background(Color.White.copy(alpha = 0.08f))) {
                             val animProg by animateFloatAsState(
                                 targetValue   = milestoneProgress.coerceIn(0f, 1f),
                                 animationSpec = tween(1200, easing = FastOutSlowInEasing),
@@ -680,7 +689,7 @@ fun StreakScreen(
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(50))
                                 .background(
-                                    Brush.horizontalGradient(listOf(Color(0xFF42A5F5), Color(0xFF0D47A1)))
+                                    Brush.horizontalGradient(listOf(Color(0xFF00BFA5), Color(0xFF26C6DA)))
                                 ))
                         }
 
@@ -690,7 +699,7 @@ fun StreakScreen(
                         Text(
                             if (remaining > 0) "$remaining hari lagi untuk mencapai milestone berikutnya!"
                             else "Kamu sudah mencapai milestone ini! Luar biasa!",
-                            style = MaterialTheme.typography.bodySmall.copy(color = colorScheme.onSurfaceVariant)
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF8FA8C8))
                         )
                     }
                 }
@@ -702,7 +711,7 @@ fun StreakScreen(
                     onClick  = onBack,
                     modifier = Modifier.fillMaxWidth().height(58.dp),
                     shape    = RoundedCornerShape(50),
-                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF00BFA5))
                 ) {
                     WaterDropIcon(modifier = Modifier.size(20.dp), color = Color.White)
                     Spacer(Modifier.width(10.dp))

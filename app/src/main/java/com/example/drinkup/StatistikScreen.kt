@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -517,8 +518,13 @@ fun HydrationChartCard(
                 Box(Modifier.fillMaxWidth().height(160.dp)) {
                     Canvas(Modifier.fillMaxSize()) {
                         val yTarget = size.height * (1f - targetFraction)
+                        // Glow under target line
                         drawLine(
-                            AccentRed.copy(.4f), Offset(0f, yTarget), Offset(size.width, yTarget),
+                            AccentRed.copy(.15f), Offset(0f, yTarget + 3), Offset(size.width, yTarget + 3),
+                            4.dp.toPx(), StrokeCap.Round
+                        )
+                        drawLine(
+                            AccentRed.copy(.5f), Offset(0f, yTarget), Offset(size.width, yTarget),
                             1.5.dp.toPx(), StrokeCap.Round,
                             PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                         )
@@ -532,6 +538,7 @@ fun HydrationChartCard(
                     ) {
                         weekDays.forEachIndexed { idx, (_, value) ->
                             val isToday = idx == todayDow
+                            val hitTarget = value >= targetIntake && value > 0
                             val animFrac by animateFloatAsState(
                                 if (max > 0) value / max else 0f,
                                 spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
@@ -539,28 +546,53 @@ fun HydrationChartCard(
                             )
                             val barBrush = when {
                                 value == 0       -> Brush.verticalGradient(listOf(BgCardAlt, BgCardAlt))
-                                value >= targetIntake -> Brush.verticalGradient(listOf(AccentCyan.copy(.5f), AccentCyan))
-                                isToday          -> Brush.verticalGradient(listOf(AccentBlue.copy(.5f), AccentBlue))
-                                else             -> Brush.verticalGradient(listOf(AccentBlue.copy(.2f), AccentBlue.copy(.45f)))
+                                hitTarget        -> Brush.verticalGradient(listOf(AccentTeal.copy(.6f), AccentCyan))
+                                isToday          -> Brush.verticalGradient(listOf(AccentBlue.copy(.6f), AccentCyan.copy(.8f)))
+                                else             -> Brush.verticalGradient(listOf(AccentBlue.copy(.25f), AccentBlue.copy(.55f)))
                             }
                             Column(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                                 verticalArrangement = Arrangement.Bottom,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                // Check mark for target hit
+                                if (hitTarget) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clip(CircleShape)
+                                            .background(AccentCyan.copy(.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Canvas(Modifier.size(8.dp)) {
+                                            val path = Path().apply {
+                                                moveTo(size.width * .15f, size.height * .52f)
+                                                lineTo(size.width * .42f, size.height * .78f)
+                                                lineTo(size.width * .85f, size.height * .22f)
+                                            }
+                                            drawPath(path, AccentCyan, style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                                        }
+                                    }
+                                    Spacer(Modifier.height(3.dp))
+                                } else {
+                                    Spacer(Modifier.height(17.dp))
+                                }
                                 Box(
                                     Modifier
                                         .fillMaxWidth()
                                         .fillMaxHeight(animFrac.coerceAtLeast(.04f))
-                                        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                                        .clip(RoundedCornerShape(50))
                                         .background(barBrush)
                                 ) {
-                                    if (value > 0)
+                                    if (value > 0) {
+                                        // Top shine
                                         Box(
-                                            Modifier.fillMaxWidth().height(3.dp)
+                                            Modifier.fillMaxWidth().height(4.dp)
                                                 .align(Alignment.TopCenter)
-                                                .background(Color.White.copy(.25f))
+                                                .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
+                                                .background(Color.White.copy(.30f))
                                         )
+                                    }
                                 }
                             }
                         }
@@ -654,9 +686,10 @@ fun ProgressVsTargetCard(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Day label
                     Text(
                         dayLabels[idx],
                         fontSize = 13.sp,
@@ -664,34 +697,67 @@ fun ProgressVsTargetCard(
                         color = if (isToday) AccentCyan else TextSec,
                         modifier = Modifier.width(36.dp)
                     )
+                    // Progress bar track
                     Box(
                         Modifier
                             .weight(1f)
-                            .height(if (isToday) 14.dp else 10.dp)
+                            .height(if (isToday) 16.dp else 12.dp)
                             .clip(RoundedCornerShape(50))
                             .background(BgCardAlt)
                     ) {
-                        if (hasData && barBrush != null)
+                        if (hasData && barBrush != null) {
                             Box(
                                 Modifier
                                     .fillMaxHeight()
                                     .fillMaxWidth(animPct)
                                     .clip(RoundedCornerShape(50))
                                     .background(barBrush)
-                            )
+                            ) {
+                                // Shine on bar
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                        .align(Alignment.TopCenter)
+                                        .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
+                                        .background(Color.White.copy(.22f))
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        if (!hasData) "–" else "${(pct * 100).toInt()}%",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = when {
-                            exceeded -> AccentCyan
-                            isToday  -> AccentBlue
-                            else     -> TextSec
-                        },
-                        modifier = Modifier.width(40.dp),
-                        textAlign = TextAlign.End
-                    )
+                    // Badge / percentage
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .width(44.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        if (!hasData) {
+                            Text("–", fontSize = 12.sp, color = TextMuted, textAlign = TextAlign.End)
+                        } else if (exceeded) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(AccentCyan.copy(.15f))
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "100%",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = AccentCyan
+                                )
+                            }
+                        } else {
+                            Text(
+                                "${(pct * 100).toInt()}%",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isToday) AccentBlue else TextSec,
+                                textAlign = TextAlign.End
+                            )
+                        }
+                    }
                 }
             }
 
@@ -795,10 +861,46 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                     }
                 }
             } else {
+                // Soft area curve behind bars
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .padding(horizontal = 4.dp)
+                ) {
+                    val barCount = hourlyBuckets.size
+                    val barW     = size.width / barCount
+                    val points   = hourlyBuckets.mapIndexed { i, v ->
+                        val frac = if (maxBucket > 0) v.toFloat() / maxBucket else 0f
+                        Offset(barW * i + barW / 2f, size.height * (1f - frac * .85f))
+                    }
+                    if (points.size >= 2) {
+                        val curvePath = Path().apply {
+                            moveTo(points.first().x, points.first().y)
+                            for (i in 1 until points.size) {
+                                val cp1 = Offset((points[i-1].x + points[i].x) / 2f, points[i-1].y)
+                                val cp2 = Offset((points[i-1].x + points[i].x) / 2f, points[i].y)
+                                cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, points[i].x, points[i].y)
+                            }
+                            lineTo(points.last().x, size.height)
+                            lineTo(points.first().x, size.height)
+                            close()
+                        }
+                        drawPath(
+                            curvePath,
+                            Brush.verticalGradient(
+                                listOf(AccentCyan.copy(.10f), AccentCyan.copy(.02f)),
+                                startY = 0f, endY = size.height
+                            )
+                        )
+                    }
+                }
+                Spacer(Modifier.height(-140.dp))  // overlap with bars
+
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .height(120.dp),
+                        .height(140.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
@@ -816,7 +918,7 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                         ) {
                             Box(
                                 Modifier
-                                    .width(24.dp)
+                                    .width(if (isPeak) 26.dp else 22.dp)
                                     .weight(1f)
                                     .clip(RoundedCornerShape(50))
                                     .background(Color.White.copy(.05f)),
@@ -825,15 +927,37 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                                 Box(
                                     Modifier
                                         .fillMaxWidth()
-                                        .fillMaxHeight(animFrac)
+                                        .fillMaxHeight(animFrac.coerceAtLeast(if (amount > 0) .08f else 0f))
                                         .clip(RoundedCornerShape(50))
                                         .background(
                                             if (isPeak)
-                                                Brush.verticalGradient(listOf(AccentCyan.copy(.5f), AccentCyan))
+                                                Brush.verticalGradient(listOf(AccentTeal.copy(.55f), AccentCyan))
+                                            else if (amount > 0)
+                                                Brush.verticalGradient(listOf(AccentBlue.copy(.25f), AccentBlue.copy(.55f)))
                                             else
-                                                Brush.verticalGradient(listOf(AccentBlue.copy(.2f), AccentBlue.copy(.45f)))
+                                                Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                                         )
-                                )
+                                ) {
+                                    if (amount > 0) {
+                                        Box(
+                                            Modifier.fillMaxWidth().height(3.dp)
+                                                .align(Alignment.TopCenter)
+                                                .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
+                                                .background(Color.White.copy(.30f))
+                                        )
+                                    }
+                                }
+                                // Glow dot at peak top
+                                if (isPeak && animFrac > 0f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .align(Alignment.TopCenter)
+                                            .offset(y = (-(animFrac * 140 - 4)).dp.coerceAtMost(0.dp))
+                                            .clip(CircleShape)
+                                            .background(AccentCyan)
+                                    )
+                                }
                             }
                         }
                     }

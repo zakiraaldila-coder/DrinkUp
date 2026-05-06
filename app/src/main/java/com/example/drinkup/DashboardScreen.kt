@@ -57,9 +57,13 @@ private val TextMuted       = Color(0xFF4A6880)   // text muted
 private val AccentOrange    = Color(0xFFFF6D00)
 private val AccentOrangeAlt = Color(0xFFFFAB40)
 
+
+
+
 @Composable
 fun DashboardScreen(
     onShowTambah           : () -> Unit = {},
+    onTambahMinum          : (Int) -> Unit = {},  // dipanggil dari TambahScreen saat simpan
     onNavigateToWeeklyGoal : () -> Unit = {},
     onNavigateToStreak     : () -> Unit = {},
     authViewModel          : AuthViewModel   = viewModel(),
@@ -74,6 +78,15 @@ fun DashboardScreen(
     val streak          = intakeState.streak
 
     LaunchedEffect(Unit) { intakeViewModel.startListening() }
+
+    // ── Tambah minum: simpan ke Firestore + update ViewModel ─────────────────
+    var showTambahSheet by remember { mutableStateOf(false) }
+
+    fun handleTambahMinum(ml: Int) {
+        // Satu-satunya penulis ke Firestore — tidak ada double write
+        intakeViewModel.addIntake(ml)
+        onTambahMinum(ml)
+    }
 
     val progress = (currentIntake.toFloat() / dynamicTarget).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
@@ -359,7 +372,7 @@ fun DashboardScreen(
                             .height(46.dp)
                             .clip(RoundedCornerShape(50))
                             .background(Brush.horizontalGradient(listOf(TealPrimary, CyanAccent)))
-                            .clickable { onShowTambah() }
+                            .clickable { showTambahSheet = true }
                             .padding(horizontal = 28.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -518,5 +531,13 @@ fun DashboardScreen(
                 Spacer(Modifier.height(30.dp))
             }
         }
+    }
+
+    // ── TambahScreen overlay ────────────────────────────────────────────────
+    if (showTambahSheet) {
+        TambahScreen(
+            onTambah   = { ml -> handleTambahMinum(ml); showTambahSheet = false },
+            onBatalkan = { showTambahSheet = false }
+        )
     }
 }

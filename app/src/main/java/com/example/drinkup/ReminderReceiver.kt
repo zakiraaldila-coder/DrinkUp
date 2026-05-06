@@ -26,7 +26,9 @@ class ReminderReceiver : BroadcastReceiver() {
         // ✅ Langsung start service — TIDAK ada pengecekan isRunning di sini
         // karena pengecekan di sini rawan race condition.
         // AlarmService sendiri yang tolak via synchronized block + time-based lock.
-        val serviceIntent = Intent(context, AlarmService::class.java)
+        val serviceIntent = Intent(context, AlarmService::class.java).apply {
+            putExtra("label", label)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent)
         } else {

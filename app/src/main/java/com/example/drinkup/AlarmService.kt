@@ -63,9 +63,10 @@ class AlarmService : Service() {
             lastStartTime = now
         }
 
+        val label = intent?.getStringExtra("label") ?: ""
         Log.e("DRINKUP_DEBUG", "SERVICE STARTED - playing alarm")
 
-        startForeground(1, buildNotification())
+        startForeground(1, buildNotification(label))
         startVibration()
         startAudio()
 
@@ -125,9 +126,8 @@ class AlarmService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(label: String = ""): Notification {
         // ✅ FIX UTAMA: Tombol STOP pakai BroadcastReceiver, BUKAN PendingIntent service
-        // Vivo tidak bisa auto-fire BroadcastReceiver seperti dia auto-fire service intent
         val stopIntent = Intent(this, StopAlarmReceiver::class.java).apply {
             action = "STOP_ALARM"
         }
@@ -137,26 +137,81 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Tap notifikasi → buka app utama
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openAppPendingIntent = PendingIntent.getActivity(
+            this, 1, openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "alarm_channel",
-                "DrinkUp Alarm",
+                "DrinkUp Reminder",
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                description             = "Pengingat minum air harian"
+                enableLights(true)
+                lightColor              = android.graphics.Color.CYAN
+                enableVibration(false)  // vibration dihandle manual di service
+                lockscreenVisibility    = Notification.VISIBILITY_PUBLIC
+            }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
 
+        // Waktu sekarang untuk ditampilkan di notifikasi
+        val calendar = java.util.Calendar.getInstance()
+        val hour     = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        val minute   = calendar.get(java.util.Calendar.MINUTE)
+        val timeStr  = String.format("%02d:%02d", hour, minute)
+
+        // Nama pengingat ditampilkan jika ada
+        val displayLabel = if (label.isNotBlank()) label else "Pengingat Minum Air"
+
+        // Quotes pendek rotasi
+        val quotes = listOf(
+            "Tubuhmu butuh air. Minum sekarang! 💧",
+            "Satu tegukan lebih baik dari nol. 🥤",
+            "Hidrasi = energi. Ayo minum! ⚡",
+            "Air adalah bahan bakarmu. 🌊",
+            "Jangan tunggu haus. Minum sekarang! 💙"
+        )
+        val quoteText = quotes[((System.currentTimeMillis() / 60000) % quotes.size).toInt()]
+
         return NotificationCompat.Builder(this, "alarm_channel")
-            .setContentTitle("💧 Waktunya Minum Air!")
-            .setContentText("Jangan lupa minum ya!")
+            // ── Konten utama ─────────────────────────────────────────────────
+            .setContentTitle(displayLabel)
+            .setContentText(quoteText)
+            .setSubText("DrinkUp • $timeStr")
+            // ── Ikon ─────────────────────────────────────────────────────────
             .setSmallIcon(R.drawable.ic_notification_drop)
+            // ── BigTextStyle ─────────────────────────────────────────────────
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(quoteText)
+                    .setSummaryText("Reminder Hidrasi")
+            )
+            // ── Warna aksen navy ──────────────────────────────────────────────
+            .setColor(android.graphics.Color.parseColor("#0D1B3E"))
+            .setColorized(true)
+            // ── Tombol aksi ───────────────────────────────────────────────────
             .addAction(
                 R.drawable.ic_stop_red,
-                "STOP",
+                "Stop",
                 stopPendingIntent
             )
+            // ── Perilaku ──────────────────────────────────────────────────────
+            .setContentIntent(openAppPendingIntent)
+            .setAutoCancel(false)
             .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis())
             .build()
     }
 

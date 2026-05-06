@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -45,14 +46,17 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.launch
 
-// ── Warna nav drawer (sesuai tema navy) ───────────────────────────────────────
-private val DrawerBg       = Color(0xFF0D2B6B)
-private val DrawerSurface  = Color(0xFF112870)
-private val DrawerBorder   = Color(0xFF1E3FA0)
+// ── Palette senada SettingsScreen (dark navy + teal) ─────────────────────────
+private val DrawerBg       = Color(0xFF09122A)
+private val DrawerSurface  = Color(0xFF0F2040)
+private val DrawerBorder   = Color(0xFF1B3560)
 private val DrawerText     = Color(0xFFFFFFFF)
-private val DrawerSubText  = Color(0xFFB0C4E8)
-private val DrawerActive   = Color(0xFF4FC3F7)
-private val DrawerDivider  = Color(0xFF1E3FA0)
+private val DrawerSubText  = Color(0xFF8AAAC8)
+private val DrawerMuted    = Color(0xFF4A6A90)
+private val DrawerActive   = Color(0xFF00D4AA)
+private val DrawerCyan     = Color(0xFF00BFFF)
+private val DrawerDivider  = Color(0xFF1B3560)
+private val DrawerDanger   = Color(0xFFFF4D6A)
 
 object Routes {
     const val SPLASH           = "splash"
@@ -213,7 +217,7 @@ fun DrinkUpApp(
     ) {
         // ── Scaffold konten utama ─────────────────────────────────────────────
         Scaffold(
-            containerColor = Color(0xFF0A1F5C),
+            containerColor = Color(0xFF09122A),
             topBar = {
                 if (showHamburger) {
                     DrinkUpTopBar(
@@ -449,14 +453,19 @@ fun DrinkUpTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0A1F5C))
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Color(0xFF08112A), Color(0xFF0C1835))
+                )
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        // Hamburger button
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF112870))
+                .clip(CircleShape)
+                .background(Color(0xFF0F2040))
                 .clickable { onHamburgerClick() }
                 .align(Alignment.CenterStart),
             contentAlignment = Alignment.Center
@@ -464,30 +473,49 @@ fun DrinkUpTopBar(
             Icon(
                 Icons.Rounded.Menu,
                 contentDescription = "Menu",
-                tint     = Color.White,
+                tint     = Color(0xFF00D4AA),
                 modifier = Modifier.size(22.dp)
             )
         }
 
+        // Title dengan accent bar teal
         if (title.isNotEmpty()) {
-            Text(
-                title,
-                style    = MaterialTheme.typography.titleMedium.copy(
-                    color      = Color.White,
-                    fontWeight = FontWeight.ExtraBold
-                ),
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Row(
+                modifier          = Modifier.align(Alignment.Center),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp, 18.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFF00D4AA))
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color      = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
         }
 
-        Text(
-            "💧 DrinkUp",
-            style    = MaterialTheme.typography.labelMedium.copy(
-                color      = Color(0xFF4FC3F7),
-                fontWeight = FontWeight.Bold
-            ),
-            modifier = Modifier.align(Alignment.CenterEnd)
-        )
+        // Brand kanan
+        Row(
+            modifier          = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("💧", fontSize = 13.sp)
+            Spacer(Modifier.width(3.dp))
+            Text(
+                "DrinkUp",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color      = Color(0xFF00D4AA),
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
     }
 }
 
@@ -506,52 +534,71 @@ fun DrinkUpDrawer(
     val userEmail = userData.email.ifBlank { "" }
 
     ModalDrawerSheet(
-        modifier      = Modifier.width(300.dp),
-        drawerShape   = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+        modifier             = Modifier.width(300.dp),
+        drawerShape          = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
         drawerContainerColor = DrawerBg,
         drawerTonalElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF08112A), Color(0xFF0A1535), Color(0xFF0D1A3E))
+                    )
+                )
         ) {
+
+            // ── Header — gradient teal subtle ─────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF0A1F5C), Color(0xFF0D3B8E))
+                        Brush.linearGradient(
+                            listOf(
+                                DrawerActive.copy(alpha = 0.18f),
+                                DrawerCyan.copy(alpha = 0.05f)
+                            )
                         )
                     )
-                    .padding(horizontal = 24.dp, vertical = 36.dp)
+                    .padding(horizontal = 22.dp, vertical = 32.dp)
             ) {
+                // Tombol close
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(DrawerSurface)
+                        .border(1.dp, DrawerBorder, CircleShape)
                         .clickable { onClose() }
                         .align(Alignment.TopEnd),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Rounded.Close, null,
+                        tint     = DrawerSubText,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
 
                 Column {
+                    // Avatar dengan teal ring
                     Box(
                         modifier = Modifier
-                            .size(70.dp)
+                            .size(72.dp)
                             .clip(CircleShape)
                             .background(
                                 Brush.radialGradient(
-                                    listOf(Color(0xFF3A85E0), Color(0xFF1565C0))
+                                    listOf(DrawerActive.copy(0.28f), Color(0xFF132550))
                                 )
-                            ),
+                            )
+                            .border(2.dp, DrawerActive.copy(0.65f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text  = userName.take(1).uppercase(),
                             style = MaterialTheme.typography.headlineMedium.copy(
-                                color      = Color.White,
+                                color      = DrawerActive,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         )
@@ -560,16 +607,16 @@ fun DrinkUpDrawer(
                     Text(
                         userName,
                         style = MaterialTheme.typography.titleLarge.copy(
-                            color      = Color.White,
+                            color      = DrawerText,
                             fontWeight = FontWeight.ExtraBold
                         )
                     )
                     if (userEmail.isNotEmpty()) {
-                        Spacer(Modifier.height(3.dp))
+                        Spacer(Modifier.height(4.dp))
                         Text(
                             userEmail,
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color(0xFFB0C4E8)
+                                color = DrawerSubText
                             )
                         )
                     }
@@ -578,33 +625,45 @@ fun DrinkUpDrawer(
 
             Spacer(Modifier.height(12.dp))
 
+            // ── Nav Items ─────────────────────────────────────────────────
             navItems.forEach { item ->
                 val isActive = currentRoute == item.route
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 3.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 3.dp)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(
-                            if (isActive) Color(0xFF1E3FA0) else Color.Transparent
+                            if (isActive)
+                                Brush.horizontalGradient(
+                                    listOf(DrawerActive.copy(0.20f), DrawerCyan.copy(0.08f))
+                                )
+                            else
+                                Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                        )
+                        .border(
+                            1.dp,
+                            if (isActive) DrawerActive.copy(0.35f) else Color.Transparent,
+                            RoundedCornerShape(16.dp)
                         )
                         .clickable { onItemClick(item.route) }
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Icon circle
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (isActive) Color(0xFF4FC3F7).copy(alpha = 0.2f)
-                                    else Color.White.copy(alpha = 0.07f),
-                                    CircleShape
+                                    if (isActive) DrawerActive.copy(alpha = 0.18f)
+                                    else DrawerSurface
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 item.icon, null,
-                                tint     = if (isActive) Color(0xFF4FC3F7) else Color(0xFFB0C4E8),
+                                tint     = if (isActive) DrawerActive else DrawerSubText,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -612,7 +671,7 @@ fun DrinkUpDrawer(
                         Text(
                             item.label,
                             style = MaterialTheme.typography.bodyLarge.copy(
-                                color      = if (isActive) Color.White else Color(0xFFB0C4E8),
+                                color      = if (isActive) DrawerText else DrawerSubText,
                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
                             ),
                             modifier = Modifier.weight(1f)
@@ -620,7 +679,7 @@ fun DrinkUpDrawer(
                         if (isActive) {
                             Icon(
                                 Icons.Rounded.ChevronRight, null,
-                                tint     = Color(0xFF4FC3F7),
+                                tint     = DrawerActive,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -630,23 +689,32 @@ fun DrinkUpDrawer(
 
             Spacer(Modifier.height(12.dp))
             HorizontalDivider(
-                modifier  = Modifier.padding(horizontal = 24.dp),
+                modifier  = Modifier.padding(horizontal = 20.dp),
                 color     = DrawerDivider,
                 thickness = 1.dp
             )
             Spacer(Modifier.height(8.dp))
 
+            // ── Versi ─────────────────────────────────────────────────────
             Row(
                 modifier          = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 10.dp),
+                    .padding(horizontal = 30.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Rounded.Info, null,
-                    tint     = DrawerSubText.copy(alpha = 0.6f),
-                    modifier = Modifier.size(18.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(DrawerSurface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Info, null,
+                        tint     = DrawerMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
                 Spacer(Modifier.width(12.dp))
                 Text(
                     "Versi",
@@ -654,9 +722,9 @@ fun DrinkUpDrawer(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "1.0.0",
+                    "5.0.0",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color      = DrawerSubText,
+                        color      = DrawerActive,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -665,16 +733,19 @@ fun DrinkUpDrawer(
             Spacer(Modifier.weight(1f))
 
             HorizontalDivider(
-                modifier  = Modifier.padding(horizontal = 24.dp),
+                modifier  = Modifier.padding(horizontal = 20.dp),
                 color     = DrawerDivider,
                 thickness = 1.dp
             )
+
+            // ── Tombol Keluar — warna DrawerDanger senada SettingsScreen ──
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFFFF6D00).copy(alpha = 0.12f))
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DrawerDanger.copy(alpha = 0.08f))
+                    .border(1.dp, DrawerDanger.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
                     .clickable { onLogout() }
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
@@ -682,12 +753,13 @@ fun DrinkUpDrawer(
                     Box(
                         modifier = Modifier
                             .size(38.dp)
-                            .background(Color(0xFFFF6D00).copy(alpha = 0.2f), CircleShape),
+                            .clip(CircleShape)
+                            .background(DrawerDanger.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Rounded.Logout, null,
-                            tint     = Color(0xFFFF6D00),
+                            tint     = DrawerDanger,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -695,7 +767,7 @@ fun DrinkUpDrawer(
                     Text(
                         "Keluar",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            color      = Color(0xFFFF6D00),
+                            color      = DrawerDanger,
                             fontWeight = FontWeight.Bold
                         )
                     )

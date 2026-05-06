@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +30,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.drinkup.ui.theme.*
 import kotlinx.coroutines.launch
+
+// ─────────────────────────────────────────────────────────────
+// POPPINS FONT
+// ─────────────────────────────────────────────────────────────
+private val WPoppins = FontFamily(
+    Font(R.font.poppins_reguler,   FontWeight.Normal),
+    Font(R.font.poppins_medium,    FontWeight.Medium),
+    Font(R.font.poppins_semibold,  FontWeight.SemiBold),
+    Font(R.font.poppins_bold,      FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
+)
 
 // ─────────────────────────────────────────────────────────────
 // DATA MODEL SLIDE
@@ -108,9 +121,9 @@ fun WelcomeScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(listOf(
-                    Color(0xFF0D2B6B),   // navy medium atas
-                    Color(0xFF0A1F5C),   // navy deep tengah
-                    Color(0xFF0C2870)    // navy biru sedikit lebih terang bawah
+                    Color(0xFF08112A),   // SBgDeep atas
+                    Color(0xFF0A1535),   // SBgMid tengah
+                    Color(0xFF0D1A3E)    // bawah
                 ))
             )
             .pointerInput(Unit) {
@@ -135,7 +148,7 @@ fun WelcomeScreen(
                 .offset(x = (-80).dp, y = (-40).dp)
                 .alpha(0.25f)
                 .background(
-                    Brush.radialGradient(listOf(Color(0xFF4FC3F7), Color.Transparent)),
+                    Brush.radialGradient(listOf(Color(0xFF00D4AA), Color.Transparent)),
                     CircleShape
                 )
         )
@@ -146,7 +159,7 @@ fun WelcomeScreen(
                 .offset(x = 60.dp, y = 100.dp)
                 .alpha(0.15f)
                 .background(
-                    Brush.radialGradient(listOf(Color(0xFF00E5CC), Color.Transparent)),
+                    Brush.radialGradient(listOf(Color(0xFF00BFFF), Color.Transparent)),
                     CircleShape
                 )
         )
@@ -157,7 +170,7 @@ fun WelcomeScreen(
                 .offset(x = (-40).dp, y = 40.dp)
                 .alpha(0.12f)
                 .background(
-                    Brush.radialGradient(listOf(Color(0xFF29B6F6), Color.Transparent)),
+                    Brush.radialGradient(listOf(Color(0xFF00D4AA), Color.Transparent)),
                     CircleShape
                 )
         )
@@ -180,6 +193,7 @@ fun WelcomeScreen(
                     text  = "DrinkUp",
                     style = MaterialTheme.typography.titleLarge.copy(
                         color      = Color(0xFFFFFFFF),
+                        fontFamily = WPoppins,
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
@@ -191,7 +205,8 @@ fun WelcomeScreen(
                             text  = "Lewati",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 color      = Color.White,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = WPoppins
                             )
                         )
                     }
@@ -207,7 +222,7 @@ fun WelcomeScreen(
                     .height(280.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(
-                        Brush.verticalGradient(listOf(Navy800, Color(0xFF0D2137)))
+                        Brush.verticalGradient(listOf(Color(0xFF0F2040), Color(0xFF0A1A30)))
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -236,14 +251,14 @@ fun WelcomeScreen(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 10.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.92f))
+                        .background(Color(0xFF0F2040))
                         .padding(horizontal = 14.dp, vertical = 7.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier         = Modifier
                                 .size(24.dp)
-                                .background(Teal400.copy(alpha = 0.2f), CircleShape),
+                                .background(Color(0xFF00D4AA).copy(alpha = 0.18f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -259,7 +274,8 @@ fun WelcomeScreen(
                                     else -> "PROGRES MINGGU INI"
                                 },
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color         = Teal600,
+                                    color         = Color(0xFF00D4AA),
+                                    fontFamily    = WPoppins,
                                     fontWeight    = FontWeight.Bold,
                                     letterSpacing = 0.6.sp,
                                     fontSize      = 8.sp
@@ -271,7 +287,8 @@ fun WelcomeScreen(
                                     else -> "85% Target Mingguan"
                                 },
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    color      = Navy800,
+                                    color      = Color(0xFFFFFFFF),
+                                    fontFamily = WPoppins,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                             )
@@ -288,6 +305,7 @@ fun WelcomeScreen(
                     text  = slide.title + " ",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         color      = Color(0xFFFFFFFF),
+                        fontFamily = WPoppins,
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
@@ -295,7 +313,8 @@ fun WelcomeScreen(
             Text(
                 text  = slide.titleItalic,
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    color      = Color(0xFF4FC3F7),
+                    color      = Color(0xFF00D4AA),
+                    fontFamily = WPoppins,
                     fontWeight = FontWeight.ExtraBold,
                     fontStyle  = FontStyle.Italic
                 )
@@ -312,7 +331,7 @@ fun WelcomeScreen(
                             .height(6.dp)
                             .width(if (isActive) 28.dp else 6.dp)
                             .clip(CircleShape)
-                            .background(if (isActive) Color(0xFF4FC3F7) else Color.White.copy(alpha = 0.25f))
+                            .background(if (isActive) Color(0xFF00D4AA) else Color.White.copy(alpha = 0.20f))
                     )
                 }
             }
@@ -324,10 +343,10 @@ fun WelcomeScreen(
             // ── Tombol CTA ────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(48.dp)
+                    .fillMaxWidth(0.85f)
+                    .height(54.dp)
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Color.White),
+                    .background(Color(0xFF00D4AA)),
                 contentAlignment = Alignment.Center
             ) {
                 TextButton(
@@ -341,7 +360,8 @@ fun WelcomeScreen(
                     Text(
                         text  = if (currentPage < slides.lastIndex) "Selanjutnya →" else "Mulai Sekarang →",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            color      = Color(0xFF0A1F5C),
+                            color      = Color(0xFF09122A),
+                            fontFamily = WPoppins,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -357,7 +377,10 @@ fun WelcomeScreen(
             ) {
                 Text(
                     "Sudah punya akun? ",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFFB0C4E8))
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color      = Color(0xFF8AAAC8),
+                        fontFamily = WPoppins
+                    )
                 )
                 TextButton(
                     onClick      = onLoginClick,
@@ -366,7 +389,8 @@ fun WelcomeScreen(
                     Text(
                         text  = "Masuk",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color      = Color(0xFF4FC3F7),
+                            color      = Color(0xFF00D4AA),
+                            fontFamily = WPoppins,
                             fontWeight = FontWeight.ExtraBold
                         )
                     )
@@ -388,8 +412,8 @@ private fun IllustrasiChart(
     glowAnim  : Float
 ) {
     val barHeights = listOf(0.45f, 0.75f, 0.55f, 0.90f, 0.65f)
-    val barColor   = Color(0xFF4DD0E1)
-    val barActive  = Color(0xFF26C6DA)
+    val barColor   = Color(0xFF00D4AA)
+    val barActive  = Color(0xFF26E5BC)
 
     val animBars = barHeights.mapIndexed { i, h ->
         val anim by animateFloatAsState(
@@ -447,7 +471,7 @@ private fun IllustrasiChart(
             // Bar utama dengan gradient
             val barGradient = Brush.verticalGradient(
                 colors = if (i == 3)
-                    listOf(Color(0xFF80DEEA), barActive)
+                    listOf(Color(0xFF7FFFD4), barActive)
                 else
                     listOf(barColor.copy(alpha = 0.9f), barColor.copy(alpha = 0.5f)),
                 startY = top,
@@ -506,7 +530,7 @@ private fun IllustrasiTarget(
 
         // Glow
         drawCircle(
-            color  = Color(0xFF4DD0E1).copy(alpha = 0.12f * glowAnim),
+            color  = Color(0xFF00D4AA).copy(alpha = 0.12f * glowAnim),
             radius = r * 1.5f,
             center = Offset(cx, cy)
         )
@@ -524,7 +548,7 @@ private fun IllustrasiTarget(
 
         // Progress arc
         val arcBrush = Brush.sweepGradient(
-            colors = listOf(Color(0xFF26C6DA), Color(0xFF80DEEA), Color(0xFF26C6DA)),
+            colors = listOf(Color(0xFF00D4AA), Color(0xFF26E5BC), Color(0xFF00D4AA)),
             center = Offset(cx, cy)
         )
         drawArc(
@@ -542,7 +566,7 @@ private fun IllustrasiTarget(
         val dotX     = cx + r * kotlin.math.cos(endAngle).toFloat()
         val dotY     = cy + r * kotlin.math.sin(endAngle).toFloat()
         drawCircle(color = Color.White, radius = 8.dp.toPx(), center = Offset(dotX, dotY))
-        drawCircle(color = Color(0xFF26C6DA), radius = 5.dp.toPx(), center = Offset(dotX, dotY))
+        drawCircle(color = Color(0xFF00D4AA), radius = 5.dp.toPx(), center = Offset(dotX, dotY))
 
         // Mini bars di dalam lingkaran
         val barsData = listOf(0.6f, 0.85f, 0.7f, 1.0f, 0.75f)
@@ -557,7 +581,7 @@ private fun IllustrasiTarget(
             val barH = maxH * h
             val by   = cy - barH / 2f
             drawRoundRect(
-                color        = Color(0xFF4DD0E1).copy(alpha = if (i == 3) 1f else 0.55f),
+                color        = Color(0xFF00D4AA).copy(alpha = if (i == 3) 1f else 0.50f),
                 topLeft      = Offset(bx, by),
                 size         = Size(barW, barH),
                 cornerRadius = CornerRadius(4.dp.toPx())
@@ -695,7 +719,7 @@ private fun IllustrasiStreak(
         }
         drawPath(
             path  = path,
-            color = Color(0xFF4DD0E1).copy(alpha = 0.4f),
+            color = Color(0xFF00D4AA).copy(alpha = 0.35f),
             style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
         )
     }

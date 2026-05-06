@@ -26,6 +26,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -286,23 +289,101 @@ fun StreakScreen(
     val colorScheme = MaterialTheme.colorScheme
     val state       by intakeViewModel.state.collectAsState()
 
-    // ── DATA dari IntakeViewModel (streak, bestStreak, weeklyHistory) ───────
-    val streak       = state.streak
-    val bestStreak   = state.bestStreak
+    // ── DATA dari Firestore ──────────────────────────────────────────────────
+    // Struktur DB: users/{uid}/intake/{yyyy-MM-dd} → { total: Int, entries: subcollection }
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    val sdf       = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    // State Firestore
+    var firestoreStreak     by remember { mutableStateOf(-1) }   // -1 = belum load
+    var firestoreBestStreak by remember { mutableStateOf(0) }
+    var glassesMonth        by remember { mutableStateOf(0) }
+    var avgPerDay           by remember { mutableStateOf(0.0f) }
+
+    // weekDays dari Firestore (true = hari itu total >= target)
+    var firestoreWeekMap by remember { mutableStateOf<Map<String,Boolean>>(emptyMap()) }
+
+    // ── Realtime listener — otomatis refresh saat data DB berubah ──────────
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(uid, lifecycleOwner) {
+        if (uid.isEmpty()) return@DisposableEffect onDispose {}
+
+        val db = FirebaseFirestore.getInstance()
+
+        fun processSnapshot(allSnap: com.google.firebase.firestore.QuerySnapshot) {
+            val now         = Calendar.getInstance()
+            val yearMonth   = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(now.time)
+            val userTarget2 = state.userTarget.takeIf { it > 0 } ?: 1750
+
+            // ── 1. Tanggal yang total >= target ──────────────────────────────
+            val achievedDates = allSnap.documents
+                .filter { (it.getLong("total") ?: 0L) >= userTarget2 }
+                .map { it.id }
+                .toSortedSet()
+
+            // ── 2. Streak saat ini ───────────────────────────────────────────
+            var currentStreak = 0
+            val cal = Calendar.getInstance()
+            if (!achievedDates.contains(sdf.format(cal.time))) {
+                cal.add(Calendar.DAY_OF_YEAR, -1)
+            }
+            while (achievedDates.contains(sdf.format(cal.time))) {
+                currentStreak++
+                cal.add(Calendar.DAY_OF_YEAR, -1)
+            }
+            firestoreStreak = currentStreak
+
+            // ── 3. Best streak ───────────────────────────────────────────────
+            var best = 0; var cur = 0; var prevMs = -1L
+            for (dateStr in achievedDates) {
+                val ms = sdf.parse(dateStr)?.time ?: continue
+                cur = if (prevMs < 0 || ms - prevMs == 86_400_000L) cur + 1 else 1
+                if (cur > best) best = cur
+                prevMs = ms
+            }
+            firestoreBestStreak = best
+
+            // ── 4. Statistik bulan ini ───────────────────────────────────────
+            val thisMonth  = allSnap.documents.filter { it.id.startsWith(yearMonth) }
+            glassesMonth   = thisMonth.size
+            val totalMl    = thisMonth.sumOf { (it.getLong("total") ?: 0L).toInt() }
+            val daysPassed = now.get(Calendar.DAY_OF_MONTH)
+            avgPerDay      = if (daysPassed > 0) (totalMl / 1000f) / daysPassed else 0f
+
+            // ── 5. WeekMap ───────────────────────────────────────────────────
+            firestoreWeekMap = achievedDates.associateWith { true }
+        }
+
+        // Pasang realtime snapshot listener
+        val registration = db.collection("users").document(uid)
+            .collection("intake")
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) return@addSnapshotListener
+                processSnapshot(snap)
+            }
+
+        // Lepas listener saat composable keluar
+        onDispose { registration.remove() }
+    }
+
+    // Nilai final: pakai Firestore jika sudah load, fallback ViewModel
+    val streak      = if (firestoreStreak >= 0) firestoreStreak else state.streak
+    val bestStreak  = if (firestoreBestStreak > 0) firestoreBestStreak else state.bestStreak
+
+    // Kalender mingguan
     val todayDow  = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
     val dayLabels = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
-
-    val weekDays = (0..6).map { i ->
+    val weekDays  = (0..6).map { i ->
         val cal = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, -todayDow + i) }
+        val dateStr = sdf.format(cal.time)
         Triple(
             dayLabels[i],
             cal.get(Calendar.DAY_OF_MONTH),
-            (state.weeklyHistory[sdf.format(cal.time)] ?: 0) >= state.userTarget
+            firestoreWeekMap[dateStr] ?: ((state.weeklyHistory[dateStr] ?: 0) >= state.userTarget)
         )
     }
 
+    // Milestone & progress
     val nextMilestone = when {
         streak < 10  -> 10;  streak < 30  -> 30
         streak < 60  -> 60;  streak < 100 -> 100
@@ -317,35 +398,6 @@ fun StreakScreen(
         if (nextMilestone > prevMilestone)
             (streak - prevMilestone).toFloat() / (nextMilestone - prevMilestone)
         else 1f
-
-    // ── DATA dari Firestore: glassesThisMonth & avgPerDayLiter ───────────────
-    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    var glassesMonth by remember { mutableStateOf(0) }
-    var avgPerDay    by remember { mutableStateOf(0.0f) }
-
-    LaunchedEffect(uid) {
-        if (uid.isEmpty()) return@LaunchedEffect
-        val db  = FirebaseFirestore.getInstance()
-        val now = Calendar.getInstance()
-        val yearMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(now.time)
-
-        // Ambil semua log minum bulan ini
-        db.collection("users").document(uid)
-            .collection("intakeLogs")
-            .whereGreaterThanOrEqualTo("date", "$yearMonth-01")
-            .whereLessThanOrEqualTo("date", "$yearMonth-31")
-            .get()
-            .addOnSuccessListener { snap ->
-                val totalMl   = snap.documents.sumOf { (it.getLong("amount") ?: 0L).toInt() }
-                val glasses   = snap.documents.size
-                glassesMonth  = glasses
-
-                // Hitung rata-rata per hari (dalam liter)
-                val daysInMonth = now.getActualMaximum(Calendar.DAY_OF_MONTH)
-                val daysPassed  = now.get(Calendar.DAY_OF_MONTH)
-                avgPerDay = if (daysPassed > 0) (totalMl / 1000f) / daysPassed else 0f
-            }
-    }
 
     val motivationText = when {
         streak == 0 -> "Mulai streakmu hari ini! 👋"
@@ -738,7 +790,7 @@ fun StreakScreen(
                             }
                             Surface(shape = RoundedCornerShape(50),
                                 color = Color(0xFF00BFA5).copy(alpha = 0.15f)) {
-                                Text("$streak/$nextMilestone",
+                                Text("$streak / $nextMilestone",
                                     style    = MaterialTheme.typography.labelMedium.copy(
                                         color = Color(0xFF00BFA5), fontWeight = FontWeight.ExtraBold),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),

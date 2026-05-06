@@ -262,16 +262,8 @@ fun EditProfileScreen(
                                     CircleShape
                                 )
                         )
-                        Box(
-                            modifier = Modifier
-                                .size(110.dp)
-                                .clip(CircleShape)
-                                .background(Brush.radialGradient(listOf(ENavyCardAlt, EBgMid)))
-                                .border(2.dp, ETealPrimary.copy(0.70f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            GenderAvatar(gender = gender, size = 110.dp)
-                        }
+                        // GenderAvatar sudah punya border sendiri — tidak perlu wrapper tambahan
+                        GenderAvatar(gender = gender, nama = namaLengkap, size = 110.dp)
                     }
 
                     Spacer(Modifier.height(14.dp))

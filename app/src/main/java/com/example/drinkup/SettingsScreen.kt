@@ -181,16 +181,7 @@ fun SettingsScreen(
                                             CircleShape
                                         )
                                 )
-                                Box(
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .clip(CircleShape)
-                                        .background(Brush.radialGradient(listOf(SNavyCardAlt, SBgMid)))
-                                        .border(2.dp, STealPrimary.copy(0.80f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    GenderAvatar(gender = gender, size = 64.dp) // FIX: fungsi ini sekarang ada di bawah
-                                }
+                                GenderAvatar(gender = gender, nama = nama, size = 64.dp) // inisial avatar
                                 Box(
                                     modifier = Modifier
                                         .size(14.dp)
@@ -421,20 +412,6 @@ fun SettingsScreen(
 }
 
 // ── Reusable ──────────────────────────────────────────────────────────────────
-
-// FIX: Fungsi GenderAvatar yang hilang — ini penyebab utama crash
-@Composable
-private fun GenderAvatar(gender: String, size: Dp) {
-    val emoji = when (gender.trim().lowercase()) {
-        "laki-laki", "male", "pria"     -> "👨"
-        "perempuan", "female", "wanita" -> "👩"
-        else                            -> "🧑"
-    }
-    Text(
-        text     = emoji,
-        fontSize = (size.value * 0.42f).sp
-    )
-}
 
 @Composable
 private fun SLabel(

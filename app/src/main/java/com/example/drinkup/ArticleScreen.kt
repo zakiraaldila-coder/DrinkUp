@@ -16,16 +16,26 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 
-// ─── Design tokens (same as StatistikScreen) ──────────────────────────────────
-private val ABgDeep      = Color(0xFF0B1629)
+// ─── Poppins FontFamily ───────────────────────────────────────────────────────
+private val Poppins = FontFamily(
+    Font(R.font.poppins_reguler,   FontWeight.Normal),
+    Font(R.font.poppins_medium,    FontWeight.Medium),
+    Font(R.font.poppins_semibold,  FontWeight.SemiBold),
+    Font(R.font.poppins_bold,      FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
+)
+
+// ─── Design tokens ────────────────────────────────────────────────────────────
+private val ABgDeep      = Color(0xFF0A1628)
 private val ABgCard      = Color(0xFF112240)
-private val ABgCardAlt   = Color(0xFF0D1B36)
 private val AAccentCyan  = Color(0xFF00E5FF)
 private val AAccentBlue  = Color(0xFF2979FF)
 private val AAccentTeal  = Color(0xFF00BFA5)
@@ -62,7 +72,7 @@ private fun ArticleDropIcon(modifier: Modifier = Modifier, color: Color = AAccen
 }
 
 @Composable
-private fun TrendUpIcon(modifier: Modifier = Modifier, color: Color = AAccentBlue) {
+private fun TrendUpIcon(modifier: Modifier = Modifier, color: Color = AAccentCyan) {
     Canvas(modifier = modifier) {
         val w = size.width; val h = size.height
         val path = Path().apply {
@@ -152,50 +162,66 @@ fun ArticleScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
+                .height(300.dp)
         ) {
-            // Background gradient
+            // Background gradient biru gelap
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.linearGradient(
-                            listOf(Color(0xFF0B1D3A), Color(0xFF0D2D50), Color(0xFF0A3355)),
-                            Offset.Zero,
-                            Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF0D1F3C), Color(0xFF0B1629))
                         )
                     )
             )
-            // Dekorasi lingkaran
+            // Dekorasi lingkaran halus
             Canvas(Modifier.fillMaxSize()) {
-                drawCircle(AAccentCyan.copy(.05f), size.width * .60f,
-                    Offset(size.width * .85f, -size.height * .1f))
-                drawCircle(AAccentBlue.copy(.08f), size.width * .40f,
-                    Offset(-size.width * .05f, size.height * .85f))
-                drawCircle(Color.White.copy(.03f), size.width * .25f,
-                    Offset(size.width * .55f, size.height * .75f))
+                drawCircle(AAccentCyan.copy(.06f), size.width * .55f,
+                    Offset(size.width * .80f, -size.height * .05f))
+                drawCircle(AAccentBlue.copy(.07f), size.width * .45f,
+                    Offset(-size.width * .10f, size.height * .80f))
             }
-            // Drop icon besar
+
+            // Drop icon di tengah hero
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .offset(y = (-16).dp)
+                    .offset(y = 8.dp)
             ) {
-                ArticleDropIcon(modifier = Modifier.size(96.dp))
+                ArticleDropIcon(modifier = Modifier.size(100.dp))
             }
-            // Overlay fade bottom
+
+            // Badge EDUKASI KESEHATAN di bawah icon
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 74.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        Brush.horizontalGradient(listOf(AAccentBlue, AAccentTeal))
+                    )
+                    .padding(horizontal = 18.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    "EDUKASI KESEHATAN",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    letterSpacing = 1.2.sp,
+                    fontFamily = Poppins
+                )
+            }
+
+            // Fade ke bawah
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
+                    .height(100.dp)
                     .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, ABgDeep)
-                        )
-                    )
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, ABgDeep)))
             )
-            // Top bar: back button + title
+
+            // Top bar: back button + "ARTIKEL"
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -203,16 +229,16 @@ fun ArticleScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(.08f))
+                        .background(Color.White.copy(.10f))
                         .clickable { onBack() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Rounded.ArrowBack, null,
                         tint = ATextPrimary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 }
                 Text(
@@ -220,103 +246,95 @@ fun ArticleScreen(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = ATextPrimary,
-                    letterSpacing = 1.5.sp,
+                    letterSpacing = 1.8.sp,
+                    fontFamily = Poppins,
                     modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            // Badge kategori
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 36.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(AAccentBlue, AAccentTeal)
-                        )
-                    )
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    "EDUKASI KESEHATAN",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    letterSpacing = 1.sp
                 )
             }
         }
 
         // ── Content ───────────────────────────────────────────────────────────
-        Column(Modifier.padding(horizontal = 22.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp)) {
 
-            // Judul
+            Spacer(Modifier.height(8.dp))
+
+            // Judul artikel
             Text(
-                "Pentingnya Air Saat\nPagi",
-                fontSize = 28.sp,
+                "Pentingnya Air Saat Pagi",
+                fontSize = 26.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = ATextPrimary,
-                lineHeight = 36.sp,
+                lineHeight = 34.sp,
                 textAlign = TextAlign.Center,
+                fontFamily = Poppins,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(22.dp))
 
-            // Paragraf pembuka dengan drop cap
+            // Paragraf pembuka dengan drop cap "B"
             Row(verticalAlignment = Alignment.Top) {
                 Box(
                     modifier = Modifier
-                        .padding(end = 8.dp, top = 2.dp)
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(AAccentBlue, AAccentTeal)
-                            )
-                        ),
+                        .padding(end = 9.dp, top = 3.dp)
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Brush.linearGradient(listOf(AAccentBlue, AAccentTeal))),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("B", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Text(
+                        "B",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        fontFamily = Poppins
+                    )
                 }
                 Text(
-                    "ayangkan tubuh Anda sebagai mesin yang telah beristirahat selama 8 jam. Minum segelas air putih segera setelah bangun tidur adalah cara terbaik untuk \"menyalakan\" sistem tubuh Anda kembali dengan lembut dan efektif.",
-                    fontSize = 15.sp,
+                    "ayangkan tubuh Anda sebagai mesin yang telah beristirahat selama 8 jam. " +
+                            "Minum segelas air putih segera setelah bangun tidur adalah cara terbaik untuk " +
+                            "\"menyalakan\" sistem tubuh Anda kembali dengan lembut dan efektif.",
+                    fontSize = 14.sp,
                     color = ATextSec,
-                    lineHeight = 25.sp
+                    lineHeight = 23.sp,
+                    fontFamily = Poppins
                 )
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(26.dp))
 
-            // ── Section: Mengaktifkan Organ Internal ──────────────────────────
+            // ── Mengaktifkan Organ Internal ───────────────────────────────────
             ArtSectionHeader(
-                icon = { TrendUpIcon(Modifier.size(16.dp)) },
-                iconBg = AAccentBlue.copy(.12f),
-                title = "Mengaktifkan Organ Internal"
+                icon  = { TrendUpIcon(Modifier.size(17.dp)) },
+                iconBg = AAccentBlue.copy(.13f),
+                title  = "Mengaktifkan Organ Internal"
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Setelah tidur panjang, tubuh mengalami dehidrasi ringan. Air pertama yang Anda minum bertindak sebagai pelumas untuk organ-organ vital, membantu ginjal dan hati untuk mulai bekerja optimal dalam menyaring darah sejak menit pertama hari Anda dimulai.",
+                "Setelah tidur panjang, tubuh mengalami dehidrasi ringan. Air pertama yang Anda " +
+                        "minum bertindak sebagai pelumas untuk organ-organ vital, membantu ginjal dan hati " +
+                        "untuk mulai bekerja optimal dalam menyaring darah sejak menit pertama hari Anda dimulai.",
                 fontSize = 14.sp,
                 color = ATextSec,
-                lineHeight = 23.sp
+                lineHeight = 22.sp,
+                fontFamily = Poppins
             )
 
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(24.dp))
 
             // ── Keuntungan Utama Card ─────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(ABgCard)
+                    .border(1.dp, Color.White.copy(.07f), RoundedCornerShape(20.dp))
             ) {
                 Canvas(Modifier.matchParentSize()) {
-                    drawCircle(Color.White.copy(.03f), size.width * .38f,
-                        Offset(size.width * .92f, size.height * .12f))
+                    drawCircle(Color.White.copy(.025f), size.width * .40f,
+                        Offset(size.width * .94f, size.height * .10f))
                 }
-                Column(Modifier.padding(20.dp)) {
+                Column(Modifier.padding(18.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -324,12 +342,13 @@ fun ArticleScreen(
                         SparkleIcon(Modifier.size(20.dp))
                         Text(
                             "Keuntungan Utama",
-                            fontSize = 16.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = ATextPrimary
+                            color = ATextPrimary,
+                            fontFamily = Poppins
                         )
                     }
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(14.dp))
 
                     data class Benefit(val iconId: Int, val title: String, val desc: String)
                     val benefits = listOf(
@@ -346,41 +365,43 @@ fun ArticleScreen(
                     benefits.forEachIndexed { idx, benefit ->
                         if (idx > 0) {
                             Spacer(Modifier.height(4.dp))
-                            HorizontalDivider(color = Color.White.copy(.07f))
+                            HorizontalDivider(color = Color.White.copy(.07f), thickness = 0.8.dp)
                             Spacer(Modifier.height(4.dp))
                         }
                         Row(
-                            Modifier.padding(vertical = 8.dp),
+                            Modifier.padding(vertical = 7.dp),
                             verticalAlignment = Alignment.Top
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White.copy(.08f)),
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.White.copy(.07f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 when (benefit.iconId) {
-                                    0 -> DetoxIcon(Modifier.size(20.dp))
-                                    1 -> BoltIcon(Modifier.size(20.dp))
-                                    2 -> BrainIcon(Modifier.size(20.dp))
-                                    else -> SparkleIcon(Modifier.size(20.dp))
+                                    0    -> DetoxIcon(Modifier.size(19.dp))
+                                    1    -> BoltIcon(Modifier.size(19.dp))
+                                    2    -> BrainIcon(Modifier.size(19.dp))
+                                    else -> SparkleIcon(Modifier.size(19.dp))
                                 }
                             }
-                            Spacer(Modifier.width(14.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(
                                     benefit.title,
-                                    fontSize = 14.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ATextPrimary
+                                    color = ATextPrimary,
+                                    fontFamily = Poppins
                                 )
                                 Spacer(Modifier.height(3.dp))
                                 Text(
                                     benefit.desc,
                                     fontSize = 12.sp,
                                     color = ATextSec,
-                                    lineHeight = 18.sp
+                                    lineHeight = 17.sp,
+                                    fontFamily = Poppins
                                 )
                             }
                         }
@@ -388,15 +409,15 @@ fun ArticleScreen(
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(26.dp))
 
             // ── Tips Praktis Pagi Hari ────────────────────────────────────────
             ArtSectionHeader(
-                icon = { ArticleDropIcon(Modifier.size(16.dp), AAccentBlue) },
-                iconBg = AAccentBlue.copy(.12f),
-                title = "Tips Praktis Pagi Hari"
+                icon  = { ArticleDropIcon(Modifier.size(16.dp), AAccentCyan) },
+                iconBg = AAccentCyan.copy(.10f),
+                title  = "Tips Praktis Pagi Hari"
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             val tips = listOf(
                 "Gunakan air suhu ruang (bukan air es) agar tidak mengagetkan sistem pencernaan.",
@@ -406,115 +427,115 @@ fun ArticleScreen(
 
             tips.forEachIndexed { idx, tip ->
                 Row(
-                    Modifier.padding(vertical = 8.dp),
+                    Modifier.padding(vertical = 7.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(AAccentBlue, AAccentTeal)
-                                )
-                            ),
+                            .background(Brush.linearGradient(listOf(AAccentBlue, AAccentTeal))),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             "${idx + 1}",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = Color.White,
+                            fontFamily = Poppins
                         )
                     }
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(
                         tip,
                         fontSize = 14.sp,
                         color = ATextSec,
                         lineHeight = 22.sp,
+                        fontFamily = Poppins,
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(28.dp))
 
             // ── CTA Card ──────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(
                         Brush.linearGradient(
-                            listOf(AAccentBlue, Color(0xFF0064B4), AAccentTeal),
+                            listOf(AAccentBlue, Color(0xFF005FA3), AAccentTeal),
                             Offset.Zero,
                             Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                         )
                     )
             ) {
                 Canvas(Modifier.matchParentSize()) {
-                    drawCircle(Color.White.copy(.06f), size.width * .42f,
-                        Offset(size.width * .88f, size.height * .25f))
-                    drawCircle(Color.White.copy(.04f), size.width * .25f,
-                        Offset(size.width * .05f, size.height * .85f))
+                    drawCircle(Color.White.copy(.07f), size.width * .45f,
+                        Offset(size.width * .90f, size.height * .20f))
+                    drawCircle(Color.White.copy(.04f), size.width * .28f,
+                        Offset(size.width * .04f, size.height * .90f))
                 }
                 Column(
-                    Modifier.padding(28.dp),
+                    Modifier.padding(horizontal = 28.dp, vertical = 30.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Drop icon
                     Box(
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(.15f)),
+                            .background(Color.White.copy(.18f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        ArticleDropIcon(Modifier.size(28.dp), Color.White)
+                        ArticleDropIcon(Modifier.size(26.dp), Color.White)
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(14.dp))
                     Text(
                         "Siap Mulai Hari?",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        fontFamily = Poppins
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "Jangan lupa catat hidrasi pertama Anda hari ini di DrinkUp.",
                         fontSize = 13.sp,
-                        color = Color.White.copy(.75f),
+                        color = Color.White.copy(.78f),
                         textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
+                        lineHeight = 20.sp,
+                        fontFamily = Poppins
                     )
-                    Spacer(Modifier.height(22.dp))
+                    Spacer(Modifier.height(20.dp))
                     Button(
-                        onClick = { onDrink() },
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
+                        onClick  = { onDrink() },
+                        shape    = RoundedCornerShape(50),
+                        colors   = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
                             contentColor   = AAccentBlue
                         ),
-                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            ArticleDropIcon(Modifier.size(18.dp), AAccentBlue)
+                            ArticleDropIcon(Modifier.size(17.dp), AAccentBlue)
                             Text(
                                 "Catat Minum Sekarang",
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 15.sp
+                                fontSize   = 15.sp,
+                                fontFamily = Poppins
                             )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(44.dp))
         }
     }
 }
@@ -530,17 +551,18 @@ private fun ArtSectionHeader(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(34.dp)
+                .clip(RoundedCornerShape(9.dp))
                 .background(iconBg),
             contentAlignment = Alignment.Center
         ) { icon() }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(11.dp))
         Text(
             title,
-            fontSize = 18.sp,
+            fontSize   = 17.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = ATextPrimary
+            color      = ATextPrimary,
+            fontFamily = Poppins
         )
     }
 }

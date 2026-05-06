@@ -19,25 +19,38 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.drinkup.R
 import java.text.SimpleDateFormat
 import java.util.*
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-private val BgDeep      = Color(0xFF0B1629)
-private val BgCard      = Color(0xFF112240)
-private val BgCardAlt   = Color(0xFF0D1B36)
-private val AccentCyan  = Color(0xFF00E5FF)
-private val AccentBlue  = Color(0xFF2979FF)
-private val AccentTeal  = Color(0xFF00BFA5)
-private val AccentOrange= Color(0xFFFF6D00)
+private val BgDeep      = Color(0xFF080E1C)
+private val BgCard      = Color(0xFF0D1526)
+private val BgCardAlt   = Color(0xFF0A1120)
+private val AccentCyan  = Color(0xFF00D9FF)
+private val AccentBlue  = Color(0xFF1A6FFF)
+private val AccentTeal  = Color(0xFF00E5C8)
+private val AccentOrange= Color(0xFFFF8C00)
 private val AccentRed   = Color(0xFFFF1744)
-private val TextPrimary = Color(0xFFE8F0FE)
-private val TextSec     = Color(0xFF7B93B8)
-private val TextMuted   = Color(0xFF3D5A80)
+private val AccentPurple= Color(0xFFBB44FF)
+private val TextPrimary = Color(0xFFFFFFFF)
+private val TextSec     = Color(0xFF4A6A8A)
+private val TextMuted   = Color(0xFF1E3050)
+
+// ─── Font ─────────────────────────────────────────────────────────────────────
+private val Poppins = FontFamily(
+    Font(R.font.poppins_reguler,   FontWeight.Normal),
+    Font(R.font.poppins_medium,    FontWeight.Medium),
+    Font(R.font.poppins_semibold,  FontWeight.SemiBold),
+    Font(R.font.poppins_bold,      FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold),
+)
 
 // ─── Canvas icons ─────────────────────────────────────────────────────────────
 
@@ -64,7 +77,7 @@ fun DropIconStat(modifier: Modifier = Modifier, color: Color = AccentCyan) {
                 cx - size.width * .09f, size.height * .26f)
             close()
         }
-        drawPath(shine, Color.White.copy(alpha = .4f))
+        drawPath(shine, Color.White.copy(alpha = .35f))
     }
 }
 
@@ -106,9 +119,10 @@ fun TargetCircleIcon(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val c = Offset(size.width / 2f, size.height / 2f)
         val r = minOf(size.width, size.height) / 2f
-        drawCircle(AccentRed, r, c)
-        drawCircle(Color.White, r * .68f, c)
-        drawCircle(AccentRed, r * .38f, c)
+        drawCircle(AccentPurple.copy(.20f), r, c)
+        drawCircle(AccentPurple, r, c, style = Stroke(r * .18f))
+        drawCircle(AccentPurple.copy(.65f), r * .50f, c, style = Stroke(r * .14f))
+        drawCircle(AccentPurple, r * .18f, c)
     }
 }
 
@@ -116,8 +130,8 @@ fun TargetCircleIcon(modifier: Modifier = Modifier) {
 fun ClockIconStat(modifier: Modifier = Modifier, color: Color = AccentCyan) {
     Canvas(modifier = modifier) {
         val cx = size.width / 2f; val cy = size.height / 2f; val r = size.width / 2f
-        drawCircle(color, r, Offset(cx, cy))
-        drawCircle(Color.White.copy(.15f), r * .82f, Offset(cx, cy), style = Stroke(r * .06f))
+        drawCircle(color.copy(.15f), r, Offset(cx, cy))
+        drawCircle(color, r, Offset(cx, cy), style = Stroke(r * .10f))
         drawLine(Color.White, Offset(cx, cy), Offset(cx, cy - r * .52f), r * .08f, StrokeCap.Round)
         drawLine(Color.White, Offset(cx, cy), Offset(cx + r * .38f, cy), r * .07f, StrokeCap.Round)
         drawCircle(Color.White, r * .08f, Offset(cx, cy))
@@ -176,78 +190,70 @@ fun StatistikScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0xFF0B1D3A), Color(0xFF0D2D50), Color(0xFF0E3A5F)),
-                                Offset.Zero, Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
-                        )
+                        .background(BgDeep)
+                        .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp)
                 ) {
-                    Canvas(Modifier.fillMaxSize()) {
-                        drawCircle(AccentCyan.copy(.06f), size.width * .55f,
-                            Offset(size.width * .9f, size.height * .15f))
-                        drawCircle(AccentBlue.copy(.08f), size.width * .32f,
-                            Offset(size.width * .05f, size.height * .9f))
-                    }
-                    // Chip total minggu ini — kanan atas
+                    // "MINGGU INI" chip — top right
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 20.dp, end = 20.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(.08f))
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(BgCard)
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                "MINGGU INI",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                "MINGGU\nINI",
+                                fontSize = 8.sp,
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
                                 color = TextSec,
-                                letterSpacing = 1.sp
+                                letterSpacing = .8.sp,
+                                textAlign = TextAlign.End,
+                                lineHeight = 11.sp
                             )
+                            Spacer(Modifier.height(3.dp))
                             Text(
                                 "${String.format("%.1f", totalL)} L",
-                                fontSize = 20.sp,
+                                fontSize = 22.sp,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = TextPrimary
                             )
                         }
                     }
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 22.dp, bottom = 24.dp)
-                    ) {
+                    // Hero text left
+                    Column(modifier = Modifier.padding(end = 110.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            DropIconStat(Modifier.size(12.dp), AccentCyan)
+                            DropIconStat(Modifier.size(10.dp), AccentCyan)
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 "HIDRASI",
                                 fontSize = 10.sp,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = AccentCyan,
                                 letterSpacing = 2.sp
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             "Statistik\nMingguan",
-                            fontSize = 30.sp,
+                            fontSize = 28.sp,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.ExtraBold,
                             color = TextPrimary,
-                            lineHeight = 36.sp
+                            lineHeight = 34.sp
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             "Lacak hidrasi Anda sepanjang minggu",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
+                            fontFamily = Poppins,
                             color = TextSec
                         )
                     }
                 }
-                Spacer(Modifier.height(20.dp))
             }
 
             // ── Mini Stat Row ────────────────────────────────────────────────
@@ -256,55 +262,55 @@ fun StatistikScreen(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     StatMiniCard(
                         modifier = Modifier.weight(1f),
-                        icon = { ChartBarIcon(Modifier.size(20.dp), AccentCyan) },
+                        icon = { ChartBarIcon(Modifier.size(18.dp), AccentCyan) },
                         iconBg = AccentCyan.copy(.12f),
-                        label = "RATA-RATA/HARI",
+                        label = "RATA-\nRATA/HARI",
                         value = "${String.format("%.1f", avgL)} L"
                     )
                     StatMiniCard(
                         modifier = Modifier.weight(1f),
-                        icon = { FlameIcon(Modifier.size(20.dp)) },
+                        icon = { FlameIcon(Modifier.size(18.dp)) },
                         iconBg = AccentOrange.copy(.12f),
                         label = "REKOR TERBAIK",
                         value = "${String.format("%.1f", recordL)} L"
                     )
                     StatMiniCard(
                         modifier = Modifier.weight(1f),
-                        icon = { TargetCircleIcon(Modifier.size(20.dp)) },
-                        iconBg = AccentRed.copy(.12f),
+                        icon = { TargetCircleIcon(Modifier.size(18.dp)) },
+                        iconBg = AccentPurple.copy(.10f),
                         label = "TARGET HARIAN",
                         value = "${String.format("%.1f", targetIntake / 1000.0)} L"
                     )
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
             }
 
             // ── Health Tips Card ─────────────────────────────────────────────
             item {
                 HealthTipsCard(onReadMore = onReadMore)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
             }
 
             // ── Hydration Chart ──────────────────────────────────────────────
             item {
                 HydrationChartCard(weekDays, dayLabels, targetIntake, totalL, todayDow)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
             }
 
             // ── Progress vs Target ───────────────────────────────────────────
             item {
                 ProgressVsTargetCard(weekDays, dayLabels, targetIntake)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
             }
 
             // ── Pola Jam Minum ───────────────────────────────────────────────
             item {
                 HourlyPatternCard(hourlyBuckets, hourLabels)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -322,15 +328,15 @@ fun StatMiniCard(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(BgCard)
-            .padding(14.dp)
+            .padding(12.dp)
     ) {
         Column {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(iconBg),
                 contentAlignment = Alignment.Center
             ) { icon() }
@@ -338,12 +344,17 @@ fun StatMiniCard(
             Text(
                 label,
                 fontSize = 8.sp,
+                fontFamily = Poppins,
                 color = TextSec,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = .4.sp
+                letterSpacing = .2.sp,
+                lineHeight = 12.sp
             )
-            Spacer(Modifier.height(3.dp))
-            Text(value, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                value, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary,
+                fontFamily = Poppins,
+            )
         }
     }
 }
@@ -356,26 +367,27 @@ fun HealthTipsCard(onReadMore: () -> Unit = {}) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(BgCard)
     ) {
-        Column {
-            // top teal accent row
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(
+                AccentTeal.copy(.05f), size.width * .45f,
+                Offset(size.width * .95f, size.height * .05f)
+            )
+        }
+        Column(Modifier.padding(20.dp)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Drop icon circle
                 Box(
                     modifier = Modifier
                         .size(52.dp)
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(
                             Brush.linearGradient(
-                                listOf(Color(0xFF004D6B), Color(0xFF006A80)),
+                                listOf(Color(0xFF003D55), Color(0xFF005870)),
                                 Offset.Zero,
                                 Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                             )
@@ -388,44 +400,46 @@ fun HealthTipsCard(onReadMore: () -> Unit = {}) {
                     Text(
                         "HEALTH TIPS",
                         fontSize = 9.sp,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.ExtraBold,
                         color = AccentTeal,
-                        letterSpacing = 1.5.sp
+                        letterSpacing = 1.2.sp
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
                         "Pentingnya Air Saat Pagi",
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.ExtraBold,
                         color = TextPrimary
                     )
                 }
             }
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 20.dp),
-                color = Color.White.copy(.06f)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Memulai hari dengan segelas air hangat dapat membantu mengaktifkan organ internal dan membuang racun sebelum mengonsumsi makanan pertama.",
+                fontSize = 13.sp,
+                fontFamily = Poppins,
+                color = TextSec,
+                lineHeight = 20.sp
             )
-            Column(Modifier.padding(20.dp)) {
+            Spacer(Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.clickable { onReadMore() },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
-                    "Memulai hari dengan segelas air hangat dapat membantu mengaktifkan organ internal dan membuang racun sebelum mengonsumsi makanan pertama.",
+                    "Baca Selengkapnya",
                     fontSize = 13.sp,
-                    color = TextSec,
-                    lineHeight = 21.sp
+                    fontFamily = Poppins,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentCyan
                 )
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier.clickable { onReadMore() },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        "Baca Selengkapnya",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentCyan
-                    )
-                    Text("›", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AccentCyan)
-                }
+                Text(
+                    "›", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AccentCyan,
+                    fontFamily = Poppins,
+                )
             }
         }
     }
@@ -448,7 +462,7 @@ fun HydrationChartCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(BgCard)
     ) {
         Column(Modifier.padding(20.dp)) {
@@ -460,25 +474,27 @@ fun HydrationChartCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
-                            .background(AccentBlue.copy(.12f)),
+                            .background(AccentBlue.copy(.15f)),
                         contentAlignment = Alignment.Center
-                    ) { ChartBarIcon(Modifier.size(20.dp), AccentBlue) }
+                    ) { ChartBarIcon(Modifier.size(20.dp), AccentCyan) }
                     Column {
                         Text(
                             "Aktivitas Hidrasi",
                             fontSize = 16.sp,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Text(
                             "7 HARI TERAKHIR",
                             fontSize = 9.sp,
+                            fontFamily = Poppins,
                             color = TextSec,
                             letterSpacing = .5.sp,
                             fontWeight = FontWeight.SemiBold
@@ -488,14 +504,16 @@ fun HydrationChartCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "TOTAL MINGGU INI",
-                        fontSize = 9.sp,
+                        fontSize = 8.sp,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.SemiBold,
                         color = TextSec,
-                        letterSpacing = .5.sp
+                        letterSpacing = .4.sp
                     )
                     Text(
                         "${String.format("%.1f", totalL)} L",
                         fontSize = 20.sp,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.ExtraBold,
                         color = TextPrimary
                     )
@@ -510,21 +528,22 @@ fun HydrationChartCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         DropIconStat(Modifier.size(36.dp), TextMuted)
                         Spacer(Modifier.height(8.dp))
-                        Text("Belum ada data minggu ini", color = TextSec, fontSize = 14.sp)
+                        Text(
+                            "Belum ada data minggu ini", color = TextSec, fontSize = 14.sp,
+                            fontFamily = Poppins,
+                        )
                     }
                 }
             } else {
-                // Target dashed line + bars
                 Box(Modifier.fillMaxWidth().height(160.dp)) {
                     Canvas(Modifier.fillMaxSize()) {
                         val yTarget = size.height * (1f - targetFraction)
-                        // Glow under target line
                         drawLine(
-                            AccentRed.copy(.15f), Offset(0f, yTarget + 3), Offset(size.width, yTarget + 3),
+                            AccentRed.copy(.12f), Offset(0f, yTarget + 3), Offset(size.width, yTarget + 3),
                             4.dp.toPx(), StrokeCap.Round
                         )
                         drawLine(
-                            AccentRed.copy(.5f), Offset(0f, yTarget), Offset(size.width, yTarget),
+                            AccentRed.copy(.45f), Offset(0f, yTarget), Offset(size.width, yTarget),
                             1.5.dp.toPx(), StrokeCap.Round,
                             PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                         )
@@ -545,17 +564,16 @@ fun HydrationChartCard(
                                 label = "b$idx"
                             )
                             val barBrush = when {
-                                value == 0       -> Brush.verticalGradient(listOf(BgCardAlt, BgCardAlt))
-                                hitTarget        -> Brush.verticalGradient(listOf(AccentTeal.copy(.6f), AccentCyan))
-                                isToday          -> Brush.verticalGradient(listOf(AccentBlue.copy(.6f), AccentCyan.copy(.8f)))
-                                else             -> Brush.verticalGradient(listOf(AccentBlue.copy(.25f), AccentBlue.copy(.55f)))
+                                value == 0  -> Brush.verticalGradient(listOf(BgCardAlt, BgCardAlt))
+                                hitTarget   -> Brush.verticalGradient(listOf(AccentTeal.copy(.7f), AccentCyan))
+                                isToday     -> Brush.verticalGradient(listOf(AccentBlue.copy(.7f), AccentCyan.copy(.9f)))
+                                else        -> Brush.verticalGradient(listOf(AccentBlue.copy(.18f), AccentBlue.copy(.40f)))
                             }
                             Column(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                                 verticalArrangement = Arrangement.Bottom,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // Check mark for target hit
                                 if (hitTarget) {
                                     Box(
                                         modifier = Modifier
@@ -581,16 +599,15 @@ fun HydrationChartCard(
                                     Modifier
                                         .fillMaxWidth()
                                         .fillMaxHeight(animFrac.coerceAtLeast(.04f))
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
                                         .background(barBrush)
                                 ) {
                                     if (value > 0) {
-                                        // Top shine
                                         Box(
-                                            Modifier.fillMaxWidth().height(4.dp)
+                                            Modifier.fillMaxWidth().height(3.dp)
                                                 .align(Alignment.TopCenter)
-                                                .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
-                                                .background(Color.White.copy(.30f))
+                                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                                .background(Color.White.copy(.22f))
                                         )
                                     }
                                 }
@@ -605,6 +622,7 @@ fun HydrationChartCard(
                         Text(
                             label,
                             fontSize = 11.sp,
+                            fontFamily = Poppins,
                             color = if (isToday) AccentCyan else TextSec,
                             fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Normal,
                             modifier = Modifier.weight(1f),
@@ -631,32 +649,33 @@ fun ProgressVsTargetCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(BgCard)
     ) {
         Column(Modifier.padding(20.dp)) {
-            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(AccentRed.copy(.12f)),
+                        .background(AccentPurple.copy(.10f)),
                     contentAlignment = Alignment.Center
-                ) { TargetCircleIcon(Modifier.size(18.dp)) }
+                ) { TargetCircleIcon(Modifier.size(20.dp)) }
                 Column {
                     Text(
                         "Progress vs Target",
                         fontSize = 16.sp,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
                     Text(
                         "Seberapa dekat tiap hari ke target",
                         fontSize = 12.sp,
+                        fontFamily = Poppins,
                         color = TextSec
                     )
                 }
@@ -679,8 +698,8 @@ fun ProgressVsTargetCard(
                 val barBrush: Brush? = when {
                     !hasData -> null
                     exceeded -> Brush.horizontalGradient(listOf(AccentTeal, AccentCyan))
-                    isToday  -> Brush.horizontalGradient(listOf(AccentBlue, AccentCyan.copy(.8f)))
-                    else     -> Brush.horizontalGradient(listOf(AccentBlue.copy(.4f), AccentBlue.copy(.65f)))
+                    isToday  -> Brush.horizontalGradient(listOf(AccentBlue.copy(.8f), AccentCyan.copy(.7f)))
+                    else     -> Brush.horizontalGradient(listOf(AccentBlue.copy(.5f), AccentBlue.copy(.75f)))
                 }
 
                 Row(
@@ -689,19 +708,18 @@ fun ProgressVsTargetCard(
                         .padding(vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Day label
                     Text(
                         dayLabels[idx],
                         fontSize = 13.sp,
+                        fontFamily = Poppins,
                         fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Normal,
                         color = if (isToday) AccentCyan else TextSec,
                         modifier = Modifier.width(36.dp)
                     )
-                    // Progress bar track
                     Box(
                         Modifier
                             .weight(1f)
-                            .height(if (isToday) 16.dp else 12.dp)
+                            .height(if (isToday) 14.dp else 10.dp)
                             .clip(RoundedCornerShape(50))
                             .background(BgCardAlt)
                     ) {
@@ -713,19 +731,17 @@ fun ProgressVsTargetCard(
                                     .clip(RoundedCornerShape(50))
                                     .background(barBrush)
                             ) {
-                                // Shine on bar
                                 Box(
                                     Modifier
                                         .fillMaxWidth()
                                         .height(3.dp)
                                         .align(Alignment.TopCenter)
                                         .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
-                                        .background(Color.White.copy(.22f))
+                                        .background(Color.White.copy(.18f))
                                 )
                             }
                         }
                     }
-                    // Badge / percentage
                     Box(
                         modifier = Modifier
                             .padding(start = 8.dp)
@@ -733,17 +749,21 @@ fun ProgressVsTargetCard(
                         contentAlignment = Alignment.CenterEnd
                     ) {
                         if (!hasData) {
-                            Text("–", fontSize = 12.sp, color = TextMuted, textAlign = TextAlign.End)
+                            Text(
+                                "–", fontSize = 12.sp, color = TextMuted, textAlign = TextAlign.End,
+                                fontFamily = Poppins,
+                            )
                         } else if (exceeded) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
-                                    .background(AccentCyan.copy(.15f))
+                                    .background(AccentCyan.copy(.12f))
                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     "100%",
                                     fontSize = 9.sp,
+                                    fontFamily = Poppins,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = AccentCyan
                                 )
@@ -752,8 +772,9 @@ fun ProgressVsTargetCard(
                             Text(
                                 "${(pct * 100).toInt()}%",
                                 fontSize = 11.sp,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isToday) AccentBlue else TextSec,
+                                color = if (isToday) AccentCyan else TextSec,
                                 textAlign = TextAlign.End
                             )
                         }
@@ -762,19 +783,25 @@ fun ProgressVsTargetCard(
             }
 
             Spacer(Modifier.height(14.dp))
-            HorizontalDivider(color = Color.White.copy(.06f))
+            HorizontalDivider(color = Color.White.copy(.05f))
             Spacer(Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(AccentCyan))
                     Spacer(Modifier.width(5.dp))
-                    Text("TARGET TERCAPAI", fontSize = 10.sp, color = TextSec, letterSpacing = .3.sp)
+                    Text(
+                        "TARGET TERCAPAI", fontSize = 10.sp, color = TextSec, letterSpacing = .3.sp,
+                        fontFamily = Poppins,
+                    )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(AccentBlue.copy(.6f)))
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(AccentBlue.copy(.7f)))
                     Spacer(Modifier.width(5.dp))
-                    Text("SEBAGIAN", fontSize = 10.sp, color = TextSec, letterSpacing = .3.sp)
+                    Text(
+                        "SEBAGIAN", fontSize = 10.sp, color = TextSec, letterSpacing = .3.sp,
+                        fontFamily = Poppins,
+                    )
                 }
             }
         }
@@ -795,38 +822,40 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(BgCard)
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(
-                AccentCyan.copy(.04f), size.width * .48f,
-                Offset(size.width * .92f, size.height * .12f)
+                AccentCyan.copy(.03f), size.width * .5f,
+                Offset(size.width * .90f, size.height * .10f)
             )
         }
         Column(Modifier.padding(20.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
-                            .background(AccentCyan.copy(.12f)),
+                            .background(AccentCyan.copy(.10f)),
                         contentAlignment = Alignment.Center
-                    ) { ClockIconStat(Modifier.size(18.dp), AccentCyan) }
+                    ) { ClockIconStat(Modifier.size(20.dp), AccentCyan) }
                     Column {
                         Text(
                             "Pola Jam Minum",
                             fontSize = 16.sp,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Text(
                             "Distribusi minum hari ini",
                             fontSize = 12.sp,
+                            fontFamily = Poppins,
                             color = TextSec
                         )
                     }
@@ -835,14 +864,16 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             "PALING AKTIF",
-                            fontSize = 9.sp,
+                            fontSize = 8.sp,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.SemiBold,
                             color = AccentCyan,
                             letterSpacing = .5.sp
                         )
                         Text(
                             peakLabel,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.ExtraBold,
                             color = TextPrimary
                         )
@@ -857,7 +888,10 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         DropIconStat(Modifier.size(30.dp), TextMuted)
                         Spacer(Modifier.height(8.dp))
-                        Text("Belum ada data minum hari ini", color = TextSec, fontSize = 13.sp)
+                        Text(
+                            "Belum ada data minum hari ini", color = TextSec, fontSize = 13.sp,
+                            fontFamily = Poppins,
+                        )
                     }
                 }
             } else {
@@ -889,13 +923,13 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                         drawPath(
                             curvePath,
                             Brush.verticalGradient(
-                                listOf(AccentCyan.copy(.10f), AccentCyan.copy(.02f)),
+                                listOf(AccentCyan.copy(.06f), AccentCyan.copy(.01f)),
                                 startY = 0f, endY = size.height
                             )
                         )
                     }
                 }
-                Spacer(Modifier.height(-140.dp))  // overlap with bars
+                Spacer(Modifier.height(-140.dp))
 
                 Row(
                     Modifier
@@ -918,45 +952,34 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                         ) {
                             Box(
                                 Modifier
-                                    .width(if (isPeak) 26.dp else 22.dp)
+                                    .width(if (isPeak) 22.dp else 18.dp)
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(Color.White.copy(.05f)),
+                                    .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                    .background(Color.White.copy(.03f)),
                                 Alignment.BottomCenter
                             ) {
                                 Box(
                                     Modifier
                                         .fillMaxWidth()
                                         .fillMaxHeight(animFrac.coerceAtLeast(if (amount > 0) .08f else 0f))
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
                                         .background(
                                             if (isPeak)
-                                                Brush.verticalGradient(listOf(AccentTeal.copy(.55f), AccentCyan))
+                                                Brush.verticalGradient(listOf(AccentTeal.copy(.4f), AccentCyan))
                                             else if (amount > 0)
-                                                Brush.verticalGradient(listOf(AccentBlue.copy(.25f), AccentBlue.copy(.55f)))
+                                                Brush.verticalGradient(listOf(AccentBlue.copy(.12f), AccentBlue.copy(.35f)))
                                             else
                                                 Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                                         )
                                 ) {
                                     if (amount > 0) {
                                         Box(
-                                            Modifier.fillMaxWidth().height(3.dp)
+                                            Modifier.fillMaxWidth().height(2.dp)
                                                 .align(Alignment.TopCenter)
-                                                .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
-                                                .background(Color.White.copy(.30f))
+                                                .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                                .background(Color.White.copy(.22f))
                                         )
                                     }
-                                }
-                                // Glow dot at peak top
-                                if (isPeak && animFrac > 0f) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .align(Alignment.TopCenter)
-                                            .offset(y = (-(animFrac * 140 - 4)).dp.coerceAtMost(0.dp))
-                                            .clip(CircleShape)
-                                            .background(AccentCyan)
-                                    )
                                 }
                             }
                         }
@@ -964,11 +987,14 @@ fun HourlyPatternCard(hourlyBuckets: IntArray, hourLabels: List<String>) {
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    hourLabels.forEach { label ->
+                    hourLabels.forEachIndexed { idx, label ->
+                        val isPeak = idx == peakBucket && hourlyBuckets[idx] > 0
                         Text(
                             label,
                             fontSize = 9.sp,
-                            color = TextSec,
+                            fontFamily = Poppins,
+                            color = if (isPeak) AccentCyan else TextSec,
+                            fontWeight = if (isPeak) FontWeight.ExtraBold else FontWeight.Normal,
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center
                         )
@@ -989,11 +1015,20 @@ fun SmallStatCard(modifier: Modifier = Modifier, icon: String, label: String, va
             .padding(16.dp)
     ) {
         Column {
-            Text(icon, fontSize = 22.sp)
+            Text(
+                icon, fontSize = 22.sp,
+                fontFamily = Poppins,
+            )
             Spacer(Modifier.height(10.dp))
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = TextSec, letterSpacing = .5.sp)
+            Text(
+                label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = TextSec, letterSpacing = .5.sp,
+                fontFamily = Poppins,
+            )
             Spacer(Modifier.height(4.dp))
-            Text(value, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+            Text(
+                value, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary,
+                fontFamily = Poppins,
+            )
         }
     }
 }
@@ -1019,9 +1054,15 @@ fun MiniStatCard(
                 contentAlignment = Alignment.Center
             ) { icon() }
             Spacer(Modifier.height(8.dp))
-            Text(label, fontSize = 9.sp, color = TextSec, fontWeight = FontWeight.SemiBold, letterSpacing = .3.sp)
+            Text(
+                label, fontSize = 9.sp, color = TextSec, fontWeight = FontWeight.SemiBold, letterSpacing = .3.sp,
+                fontFamily = Poppins,
+            )
             Spacer(Modifier.height(2.dp))
-            Text(value, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+            Text(
+                value, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary,
+                fontFamily = Poppins,
+            )
         }
     }
 }

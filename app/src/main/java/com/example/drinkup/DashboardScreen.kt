@@ -15,6 +15,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,15 @@ import java.util.*
 import kotlin.math.*
 
 // ── Palet tema senada halaman Statistik (navy biru medium, BUKAN hitam) ───────
+// ── Poppins FontFamily ───────────────────────────────────────────────────────
+private val Poppins = FontFamily(
+    Font(R.font.poppins_reguler,   FontWeight.Normal),
+    Font(R.font.poppins_medium,    FontWeight.Medium),
+    Font(R.font.poppins_semibold,  FontWeight.SemiBold),
+    Font(R.font.poppins_bold,      FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
+)
+
 private val BgDeep          = Color(0xFF0B1A35)   // navy biru utama — sama seperti bg statistik
 private val BgMid           = Color(0xFF0E2040)   // navy layer 2
 private val BgCard          = Color(0xFF112545)   // card surface — sedikit lebih terang dari bg
@@ -180,14 +191,18 @@ fun DashboardScreen(
                                 color         = TextSecondary,
                                 fontWeight    = FontWeight.Medium,
                                 letterSpacing = 0.3.sp
-                            )
+                            ),
+                            fontFamily = Poppins
+
                         )
                         Text(
                             "$userName! 👋",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 color      = TextPrimary,
                                 fontWeight = FontWeight.ExtraBold
-                            )
+                            ),
+                            fontFamily = Poppins
+
                         )
                     }
                     Box(
@@ -198,13 +213,17 @@ fun DashboardScreen(
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🔥", fontSize = 12.sp)
+                            Text("🔥", fontSize = 12.sp,
+                                fontFamily = Poppins
+                            )
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 "$streak Hari Streak!",
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     color = Color.White, fontWeight = FontWeight.ExtraBold
-                                )
+                                ),
+                                fontFamily = Poppins
+
                             )
                         }
                     }
@@ -286,13 +305,17 @@ fun DashboardScreen(
                                     "$currentIntake",
                                     style = MaterialTheme.typography.displayLarge.copy(
                                         color = TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 44.sp
-                                    )
+                                    ),
+                                    fontFamily = Poppins
+
                                 )
                                 Text(
                                     "ML / ${dynamicTarget}ML",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         color = TextSecondary, letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold
-                                    )
+                                    ),
+                                    fontFamily = Poppins
+
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Box(
@@ -305,7 +328,9 @@ fun DashboardScreen(
                                         "$percentInt%",
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             color = TealLight, fontWeight = FontWeight.Bold
-                                        )
+                                        ),
+                                        fontFamily = Poppins
+
                                     )
                                 }
                             }
@@ -319,7 +344,9 @@ fun DashboardScreen(
                     if (remaining > 0) "💪 Sisa $remaining ml untuk hari ini"
                     else "🎉 Kamu sudah capai target hari ini!",
                     style    = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontWeight = FontWeight.Medium),
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    fontFamily = Poppins
+
                 )
 
                 Spacer(Modifier.height(14.dp))
@@ -350,7 +377,9 @@ fun DashboardScreen(
                                 "Minum Sekarang",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.3.sp
-                                )
+                                ),
+                                fontFamily = Poppins
+
                             )
                         }
                     }
@@ -369,7 +398,9 @@ fun DashboardScreen(
                         "Aktivitas Hari Ini",
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = TextPrimary, fontWeight = FontWeight.ExtraBold
-                        )
+                        ),
+                        fontFamily = Poppins
+
                     )
                 }
 
@@ -392,11 +423,15 @@ fun DashboardScreen(
                             Spacer(Modifier.height(6.dp))
                             Text("TERAKHIR MINUM", style = MaterialTheme.typography.labelSmall.copy(
                                 color = TextSecondary, letterSpacing = 0.6.sp, fontWeight = FontWeight.SemiBold, fontSize = 9.sp
-                            ))
+                            ),
+                                fontFamily = Poppins
+                            )
                             Spacer(Modifier.height(2.dp))
                             Text(lastDrinkText, style = MaterialTheme.typography.titleMedium.copy(
                                 color = TextPrimary, fontWeight = FontWeight.ExtraBold
-                            ))
+                            ),
+                                fontFamily = Poppins
+                            )
                         }
                     }
                     // Card Gelas Hari Ini
@@ -414,11 +449,15 @@ fun DashboardScreen(
                             Spacer(Modifier.height(6.dp))
                             Text("GELAS HARI INI", style = MaterialTheme.typography.labelSmall.copy(
                                 color = TextSecondary, letterSpacing = 0.6.sp, fontWeight = FontWeight.SemiBold, fontSize = 9.sp
-                            ))
+                            ),
+                                fontFamily = Poppins
+                            )
                             Spacer(Modifier.height(2.dp))
                             Text("$gelasHariIni Gelas", style = MaterialTheme.typography.titleMedium.copy(
                                 color = TextPrimary, fontWeight = FontWeight.ExtraBold
-                            ))
+                            ),
+                                fontFamily = Poppins
+                            )
                         }
                     }
                 }
@@ -445,12 +484,16 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier.size(46.dp).background(TealPrimary.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center
-                        ) { Text("⭐", fontSize = 22.sp) }
+                        ) { Text("⭐", fontSize = 22.sp,
+                            fontFamily = Poppins
+                        ) }
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Tujuan Mingguan", style = MaterialTheme.typography.titleSmall.copy(
                                 color = TextPrimary, fontWeight = FontWeight.ExtraBold
-                            ))
+                            ),
+                                fontFamily = Poppins
+                            )
                             Spacer(Modifier.height(5.dp))
                             Box(
                                 modifier = Modifier.fillMaxWidth(0.85f).height(5.dp)
@@ -464,7 +507,9 @@ fun DashboardScreen(
                             Spacer(Modifier.height(4.dp))
                             Text("$weeklyProgress% Tercapai", style = MaterialTheme.typography.bodySmall.copy(
                                 color = TextSecondary
-                            ))
+                            ),
+                                fontFamily = Poppins
+                            )
                         }
                         Icon(Icons.Rounded.ChevronRight, null, tint = TextMuted, modifier = Modifier.size(22.dp))
                     }

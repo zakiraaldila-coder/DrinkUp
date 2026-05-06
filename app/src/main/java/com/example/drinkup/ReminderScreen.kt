@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -73,6 +75,15 @@ private fun Map<String, Any>.toReminderItem(id: String) = ReminderItem(
     days      = (this["days"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
     isActive  = this["isActive"] as? Boolean ?: true,
     vibration = this["vibration"] as? Boolean ?: true
+)
+
+// ── Poppins FontFamily ────────────────────────────────────────────────────────
+private val Poppins = FontFamily(
+    Font(R.font.poppins_reguler,   FontWeight.Normal),
+    Font(R.font.poppins_medium,    FontWeight.Medium),
+    Font(R.font.poppins_semibold,  FontWeight.SemiBold),
+    Font(R.font.poppins_bold,      FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
 )
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -331,7 +342,9 @@ fun ReminderScreen() {
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = RCyan,
-                                    letterSpacing = 2.sp
+                                    letterSpacing = 2.sp,
+                                    fontFamily = Poppins
+
                                 )
                             }
                             Spacer(Modifier.height(12.dp))
@@ -340,14 +353,18 @@ fun ReminderScreen() {
                                 fontSize = 34.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = RTextPrimary,
-                                letterSpacing = (-1).sp
+                                letterSpacing = (-1).sp,
+                                fontFamily = Poppins
+
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 "Keep your hydration flowing\nthroughout the day.",
                                 fontSize = 12.sp,
                                 color = RTextSec,
-                                lineHeight = 18.sp
+                                lineHeight = 18.sp,
+                                fontFamily = Poppins
+
                             )
                         }
                     }
@@ -398,7 +415,9 @@ fun ReminderScreen() {
                             "Tambah Reminder",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = Color.White,
+                            fontFamily = Poppins
+
                         )
                     }
                 }
@@ -429,9 +448,13 @@ fun ReminderScreen() {
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text("Notifikasi diblokir", fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White, fontSize = 14.sp)
+                                    color = Color.White, fontSize = 14.sp,
+                                    fontFamily = Poppins
+                                )
                                 Text("Aktifkan notifikasi di pengaturan untuk menerima pengingat.",
-                                    fontSize = 12.sp, color = Color.White.copy(.75f), lineHeight = 18.sp)
+                                    fontSize = 12.sp, color = Color.White.copy(.75f), lineHeight = 18.sp,
+                                    fontFamily = Poppins
+                                )
                             }
                         }
                         TextButton(
@@ -442,7 +465,9 @@ fun ReminderScreen() {
                             },
                             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp)
                         ) {
-                            Text("Buka Pengaturan →", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Buka Pengaturan →", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                                fontFamily = Poppins
+                            )
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -481,7 +506,9 @@ fun ReminderScreen() {
                             "Belum ada reminder",
                             fontWeight = FontWeight.ExtraBold,
                             color = RTextPrimary,
-                            fontSize = 18.sp
+                            fontSize = 18.sp,
+                            fontFamily = Poppins
+
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -494,7 +521,9 @@ fun ReminderScreen() {
                             },
                             color = RTextSec,
                             fontSize = 14.sp,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            fontFamily = Poppins
+
                         )
                     }
                 }
@@ -551,7 +580,9 @@ fun ReminderScreen() {
                                 "Smart Reminders",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = RTextPrimary
+                                color = RTextPrimary,
+                                fontFamily = Poppins
+
                             )
                         }
                         Spacer(Modifier.height(10.dp))
@@ -559,7 +590,9 @@ fun ReminderScreen() {
                             "We'll space out your alerts based on your daily goal and waking hours for optimal cellular hydration.",
                             fontSize = 13.sp,
                             color = RTextSec,
-                            lineHeight = 20.sp
+                            lineHeight = 20.sp,
+                            fontFamily = Poppins
+
                         )
                     }
                 }
@@ -661,7 +694,9 @@ fun ReminderCard(
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text("NONAKTIF", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFFFF8A80), letterSpacing = 1.sp)
+                                color = Color(0xFFFF8A80), letterSpacing = 1.sp,
+                                fontFamily = Poppins
+                            )
                         }
                     } else {
                         Box(
@@ -671,7 +706,9 @@ fun ReminderCard(
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text("AKTIF", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
-                                color = RCyan, letterSpacing = 1.sp)
+                                color = RCyan, letterSpacing = 1.sp,
+                                fontFamily = Poppins
+                            )
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -681,13 +718,17 @@ fun ReminderCard(
                         fontWeight    = FontWeight.ExtraBold,
                         color         = if (item.isActive) RTextPrimary else RTextPrimary.copy(.35f),
                         textDecoration= TextDecoration.None,
-                        letterSpacing = (-1).sp
+                        letterSpacing = (-1).sp,
+                        fontFamily = Poppins
+
                     )
                     Text(
                         text       = item.label,
                         fontSize   = 12.sp,
                         color      = if (item.isActive) RCyan.copy(.85f) else RTextMuted,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = Poppins
+
                     )
                 }
 
@@ -739,11 +780,15 @@ fun ReminderCard(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title   = { Text("Hapus Reminder?", fontWeight = FontWeight.Bold) },
+            title   = { Text("Hapus Reminder?", fontWeight = FontWeight.Bold,
+                fontFamily = Poppins
+            ) },
             text    = { Text("Reminder \"${item.label}\" akan dihapus permanen.") },
             confirmButton = {
                 TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
-                    Text("Hapus", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Text("Hapus", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold,
+                        fontFamily = Poppins
+                    )
                 }
             },
             dismissButton = {
@@ -767,7 +812,9 @@ fun DayChip(label: String, isActive: Boolean) {
             text       = label,
             fontSize   = 11.sp,
             fontWeight = FontWeight.SemiBold,
-            color      = if (isActive) RCyan else RTextMuted
+            color      = if (isActive) RCyan else RTextMuted,
+            fontFamily = Poppins
+
         )
     }
 }
@@ -789,14 +836,18 @@ fun NumberPicker(
                 .clickable { onUp() },
             contentAlignment = Alignment.Center
         ) {
-            Text("▲", fontSize = 14.sp, color = RCyan)
+            Text("▲", fontSize = 14.sp, color = RCyan,
+                fontFamily = Poppins
+            )
         }
         Spacer(Modifier.height(6.dp))
         Text(
             text       = String.format("%02d", value),
             fontSize   = 48.sp,
             fontWeight = FontWeight.ExtraBold,
-            color      = RTextPrimary
+            color      = RTextPrimary,
+            fontFamily = Poppins
+
         )
         Spacer(Modifier.height(6.dp))
         Box(
@@ -807,10 +858,14 @@ fun NumberPicker(
                 .clickable { onDown() },
             contentAlignment = Alignment.Center
         ) {
-            Text("▼", fontSize = 14.sp, color = RCyan)
+            Text("▼", fontSize = 14.sp, color = RCyan,
+                fontFamily = Poppins
+            )
         }
         Spacer(Modifier.height(4.dp))
-        Text(text = label, fontSize = 10.sp, color = RTextSec, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+        Text(text = label, fontSize = 10.sp, color = RTextSec, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp,
+            fontFamily = Poppins
+        )
     }
 }
 
@@ -868,8 +923,12 @@ fun AddReminderSheet(
             Alignment.CenterVertically
         ) {
             Column {
-                Text("Tambah Reminder", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = RTextPrimary)
-                Text("Atur waktu pengingat minum air", fontSize = 12.sp, color = RTextSec)
+                Text("Tambah Reminder", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = RTextPrimary,
+                    fontFamily = Poppins
+                )
+                Text("Atur waktu pengingat minum air", fontSize = 12.sp, color = RTextSec,
+                    fontFamily = Poppins
+                )
             }
             Box(
                 Modifier.size(38.dp).clip(CircleShape).background(RBlue.copy(.14f)),
@@ -907,7 +966,9 @@ fun AddReminderSheet(
                 )
                 Text(":", fontSize = 48.sp, fontWeight = FontWeight.ExtraBold,
                     color = RTextPrimary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp).offset(y = (-10).dp))
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp).offset(y = (-10).dp),
+                    fontFamily = Poppins
+                )
                 NumberPicker(
                     value  = selectedMinute,
                     onUp   = { selectedMinute = if (selectedMinute == 59) 0 else selectedMinute + 1 },
@@ -927,7 +988,9 @@ fun AddReminderSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text("AM", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
-                            color = if (isAm) RBgDeep else RTextSec)
+                            color = if (isAm) RBgDeep else RTextSec,
+                            fontFamily = Poppins
+                        )
                     }
                     Box(
                         modifier = Modifier
@@ -939,7 +1002,9 @@ fun AddReminderSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text("PM", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
-                            color = if (!isAm) RBgDeep else RTextSec)
+                            color = if (!isAm) RBgDeep else RTextSec,
+                            fontFamily = Poppins
+                        )
                     }
                 }
             }
@@ -949,7 +1014,9 @@ fun AddReminderSheet(
         Row(Modifier.fillMaxWidth(), Arrangement.Center) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 ClockIconR(Modifier.size(12.dp), RTextMuted)
-                Text("Geser untuk menyesuaikan waktu", fontSize = 11.sp, color = RTextSec)
+                Text("Geser untuk menyesuaikan waktu", fontSize = 11.sp, color = RTextSec,
+                    fontFamily = Poppins
+                )
             }
         }
 
@@ -960,13 +1027,17 @@ fun AddReminderSheet(
             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(Modifier.size(4.dp).clip(CircleShape).background(RCyan))
             Text("NAMA PENGINGAT", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
-                color = RTextSec, letterSpacing = 1.sp)
+                color = RTextSec, letterSpacing = 1.sp,
+                fontFamily = Poppins
+            )
         }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value         = reminderLabel,
             onValueChange = { reminderLabel = it },
-            placeholder   = { Text("Minum Pagi", color = RTextMuted) },
+            placeholder   = { Text("Minum Pagi", color = RTextMuted,
+                fontFamily = Poppins
+            ) },
             shape         = RoundedCornerShape(16.dp),
             singleLine    = true,
             modifier      = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
@@ -985,7 +1056,9 @@ fun AddReminderSheet(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.size(4.dp).clip(CircleShape).background(RCyan))
                 Text("ULANGI SETIAP HARI", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
-                    color = RTextSec, letterSpacing = 1.sp)
+                    color = RTextSec, letterSpacing = 1.sp,
+                    fontFamily = Poppins
+                )
             }
             Box(
                 modifier = Modifier
@@ -994,7 +1067,9 @@ fun AddReminderSheet(
                     .clickable { selectedDays = if (selectedDays.size == 7) emptySet() else dayKeys.toSet() }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text("Pilih Semua", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = RCyan)
+                Text("Pilih Semua", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = RCyan,
+                    fontFamily = Poppins
+                )
             }
         }
 
@@ -1018,7 +1093,9 @@ fun AddReminderSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(dayLabel, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                        color = if (isSelected) Color.White else RTextSec)
+                        color = if (isSelected) Color.White else RTextSec,
+                        fontFamily = Poppins
+                    )
                 }
             }
         }
@@ -1046,8 +1123,12 @@ fun AddReminderSheet(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Getaran", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = RTextPrimary)
-                Text("Aktifkan getaran saat alarm berbunyi", fontSize = 12.sp, color = RTextSec)
+                Text("Getaran", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = RTextPrimary,
+                    fontFamily = Poppins
+                )
+                Text("Aktifkan getaran saat alarm berbunyi", fontSize = 12.sp, color = RTextSec,
+                    fontFamily = Poppins
+                )
             }
             Switch(
                 checked         = vibrationOn,
@@ -1089,7 +1170,9 @@ fun AddReminderSheet(
                     "Simpan Reminder",
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color      = if (canSave) Color.White else RTextMuted
+                    color      = if (canSave) Color.White else RTextMuted,
+                    fontFamily = Poppins
+
                 )
             }
         }

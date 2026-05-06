@@ -19,14 +19,27 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.*
+
+// ── Poppins FontFamily ───────────────────────────────────────────────────────
+private val Poppins = FontFamily(
+    Font(R.font.poppins_reguler,   FontWeight.Normal),
+    Font(R.font.poppins_medium,    FontWeight.Medium),
+    Font(R.font.poppins_semibold,  FontWeight.SemiBold),
+    Font(R.font.poppins_bold,      FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
+)
 
 // ─── Mascot pakai gambar PNG dari drawable ────────────────────────────────────
 // Ukuran bertambah setiap 5 streak (base 80dp, +12dp per 5 streak, max 160dp)
@@ -273,11 +286,9 @@ fun StreakScreen(
     val colorScheme = MaterialTheme.colorScheme
     val state       by intakeViewModel.state.collectAsState()
 
-    // ── DATA — LOGIC TIDAK DIUBAH ─────────────────────────────────────────────
+    // ── DATA dari IntakeViewModel (streak, bestStreak, weeklyHistory) ───────
     val streak       = state.streak
     val bestStreak   = state.bestStreak
-    val glassesMonth = state.glassesThisMonth
-    val avgPerDay    = state.avgPerDayLiter
 
     val sdf       = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val todayDow  = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
@@ -306,7 +317,35 @@ fun StreakScreen(
         if (nextMilestone > prevMilestone)
             (streak - prevMilestone).toFloat() / (nextMilestone - prevMilestone)
         else 1f
-    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── DATA dari Firestore: glassesThisMonth & avgPerDayLiter ───────────────
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    var glassesMonth by remember { mutableStateOf(0) }
+    var avgPerDay    by remember { mutableStateOf(0.0f) }
+
+    LaunchedEffect(uid) {
+        if (uid.isEmpty()) return@LaunchedEffect
+        val db  = FirebaseFirestore.getInstance()
+        val now = Calendar.getInstance()
+        val yearMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(now.time)
+
+        // Ambil semua log minum bulan ini
+        db.collection("users").document(uid)
+            .collection("intakeLogs")
+            .whereGreaterThanOrEqualTo("date", "$yearMonth-01")
+            .whereLessThanOrEqualTo("date", "$yearMonth-31")
+            .get()
+            .addOnSuccessListener { snap ->
+                val totalMl   = snap.documents.sumOf { (it.getLong("amount") ?: 0L).toInt() }
+                val glasses   = snap.documents.size
+                glassesMonth  = glasses
+
+                // Hitung rata-rata per hari (dalam liter)
+                val daysInMonth = now.getActualMaximum(Calendar.DAY_OF_MONTH)
+                val daysPassed  = now.get(Calendar.DAY_OF_MONTH)
+                avgPerDay = if (daysPassed > 0) (totalMl / 1000f) / daysPassed else 0f
+            }
+    }
 
     val motivationText = when {
         streak == 0 -> "Mulai streakmu hari ini! 👋"
@@ -341,14 +380,18 @@ fun StreakScreen(
                             color         = Color(0xFF00BFA5),
                             fontWeight    = FontWeight.Bold,
                             letterSpacing = 1.sp
-                        )
+                        ),
+                        fontFamily = Poppins
+
                     )
                     Text(
                         "Streak Kamu",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             color      = Color.White,
                             fontWeight = FontWeight.ExtraBold
-                        )
+                        ),
+                        fontFamily = Poppins
+
                     )
                 }
                 IconButton(
@@ -435,7 +478,9 @@ fun StreakScreen(
                                     color      = Color(0xFF00BFA5),
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                fontFamily = Poppins
+
                             )
                         }
 
@@ -456,7 +501,9 @@ fun StreakScreen(
                                 style = MaterialTheme.typography.displayMedium.copy(
                                     color      = Color.White,
                                     fontWeight = FontWeight.Black
-                                )
+                                ),
+                                fontFamily = Poppins
+
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
@@ -465,7 +512,9 @@ fun StreakScreen(
                                     color      = Color(0xFF00BFA5),
                                     fontWeight = FontWeight.Bold
                                 ),
-                                modifier = Modifier.padding(bottom = 6.dp)
+                                modifier = Modifier.padding(bottom = 6.dp),
+                                fontFamily = Poppins
+
                             )
                         }
                         Text(
@@ -473,7 +522,9 @@ fun StreakScreen(
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color      = Color(0xFF8FA8C8),
                                 fontWeight = FontWeight.Medium
-                            )
+                            ),
+                            fontFamily = Poppins
+
                         )
 
                         Spacer(Modifier.height(8.dp))
@@ -491,7 +542,9 @@ fun StreakScreen(
                                         color      = Color(0xFF4DD0C4),
                                         fontWeight = FontWeight.ExtraBold
                                     ),
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                                    fontFamily = Poppins
+
                                 )
                             }
                         }
@@ -507,7 +560,9 @@ fun StreakScreen(
                         color         = Color(0xFF8FA8C8),
                         fontWeight    = FontWeight.ExtraBold,
                         letterSpacing = 2.sp
-                    )
+                    ),
+                    fontFamily = Poppins
+
                 )
                 Spacer(Modifier.height(10.dp))
 
@@ -544,7 +599,9 @@ fun StreakScreen(
                                         color      = if (isToday) Color(0xFF00BFA5) else Color.White.copy(alpha = 0.9f),
                                         fontWeight = FontWeight.Bold,
                                         fontSize   = 9.sp
-                                    )
+                                    ),
+                                    fontFamily = Poppins
+
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 if (achieved && !isToday) {
@@ -561,7 +618,9 @@ fun StreakScreen(
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         color      = if (isToday) Color(0xFF00BFA5) else Color.White,
                                         fontWeight = FontWeight.ExtraBold
-                                    )
+                                    ),
+                                    fontFamily = Poppins
+
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Box(
@@ -600,11 +659,15 @@ fun StreakScreen(
                             Spacer(Modifier.height(6.dp))
                             Text("$bestStreak",
                                 style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = Color.White, fontWeight = FontWeight.ExtraBold))
+                                    color = Color.White, fontWeight = FontWeight.ExtraBold),
+                                fontFamily = Poppins
+                            )
                             Text("Streak Terbaik",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center),
-                                textAlign = TextAlign.Center)
+                                textAlign = TextAlign.Center,
+                                fontFamily = Poppins
+                            )
                         }
                     }
 
@@ -618,11 +681,15 @@ fun StreakScreen(
                             Spacer(Modifier.height(6.dp))
                             Text("$glassesMonth",
                                 style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = Color.White, fontWeight = FontWeight.ExtraBold))
+                                    color = Color.White, fontWeight = FontWeight.ExtraBold),
+                                fontFamily = Poppins
+                            )
                             Text("Gelas Bulan Ini",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF8FA8C8), textAlign = TextAlign.Center),
-                                textAlign = TextAlign.Center)
+                                textAlign = TextAlign.Center,
+                                fontFamily = Poppins
+                            )
                         }
                     }
 
@@ -634,13 +701,17 @@ fun StreakScreen(
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             BarChartIcon(modifier = Modifier.size(26.dp))
                             Spacer(Modifier.height(6.dp))
-                            Text("${avgPerDay}L",
+                            Text("${"%.1f".format(avgPerDay)}L",
                                 style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = Color.White, fontWeight = FontWeight.ExtraBold))
+                                    color = Color.White, fontWeight = FontWeight.ExtraBold),
+                                fontFamily = Poppins
+                            )
                             Text("Rata-rata/hari",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF8FA8C8), textAlign = TextAlign.Center),
-                                textAlign = TextAlign.Center)
+                                textAlign = TextAlign.Center,
+                                fontFamily = Poppins
+                            )
                         }
                     }
                 }
@@ -661,14 +732,18 @@ fun StreakScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Text("Menuju Streak $nextMilestone Hari",
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = Color.White, fontWeight = FontWeight.SemiBold))
+                                        color = Color.White, fontWeight = FontWeight.SemiBold),
+                                    fontFamily = Poppins
+                                )
                             }
                             Surface(shape = RoundedCornerShape(50),
                                 color = Color(0xFF00BFA5).copy(alpha = 0.15f)) {
                                 Text("$streak/$nextMilestone",
                                     style    = MaterialTheme.typography.labelMedium.copy(
                                         color = Color(0xFF00BFA5), fontWeight = FontWeight.ExtraBold),
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    fontFamily = Poppins
+                                )
                             }
                         }
 
@@ -699,7 +774,9 @@ fun StreakScreen(
                         Text(
                             if (remaining > 0) "$remaining hari lagi untuk mencapai milestone berikutnya!"
                             else "Kamu sudah mencapai milestone ini! Luar biasa!",
-                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF8FA8C8))
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF8FA8C8)),
+                            fontFamily = Poppins
+
                         )
                     }
                 }
@@ -717,7 +794,9 @@ fun StreakScreen(
                     Spacer(Modifier.width(10.dp))
                     Text("Minum Sekarang & Jaga Streakmu!",
                         style = MaterialTheme.typography.titleSmall.copy(
-                            color = Color.White, fontWeight = FontWeight.Bold))
+                            color = Color.White, fontWeight = FontWeight.Bold),
+                        fontFamily = Poppins
+                    )
                 }
 
                 Spacer(Modifier.height(28.dp))

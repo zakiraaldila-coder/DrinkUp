@@ -127,7 +127,7 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text       = "Kelola akun & preferensimu",
+                        text       = "Kelola akunmu!",
                         fontSize   = 13.sp,
                         color      = STextSub,
                         fontFamily = Poppins

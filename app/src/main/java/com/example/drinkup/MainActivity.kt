@@ -444,9 +444,9 @@ fun DrinkUpTopBar(
 ) {
     val title = when (currentRoute) {
         Routes.DASHBOARD -> ""
-        Routes.STATISTIK -> "Statistik"
-        Routes.REMINDER  -> "Reminder"
-        Routes.SETTINGS  -> "Pengaturan"
+        Routes.STATISTIK -> ""
+        Routes.REMINDER  -> ""
+        Routes.SETTINGS  -> ""
         else             -> ""
     }
 
@@ -478,27 +478,16 @@ fun DrinkUpTopBar(
             )
         }
 
-        // Title dengan accent bar teal
+        // Title tanpa accent bar
         if (title.isNotEmpty()) {
-            Row(
-                modifier          = Modifier.align(Alignment.Center),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp, 18.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFF00D4AA))
+            Text(
+                title,
+                modifier = Modifier.align(Alignment.Center),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color      = Color.White,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color      = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
+            )
         }
 
         // Brand kanan
@@ -506,8 +495,6 @@ fun DrinkUpTopBar(
             modifier          = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("💧", fontSize = 13.sp)
-            Spacer(Modifier.width(3.dp))
             Text(
                 "DrinkUp",
                 style = MaterialTheme.typography.labelMedium.copy(

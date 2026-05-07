@@ -233,17 +233,13 @@ fun EditProfileScreen(
                         fontFamily = EPoppins
                     )
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("💧", fontSize = 14.sp)
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text       = "DrinkUp",
-                            fontSize   = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color      = ETealPrimary,
-                            fontFamily = EPoppins
-                        )
-                    }
+                    Text(
+                        text       = "DrinkUp",
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = ETealPrimary,
+                        fontFamily = EPoppins
+                    )
                 }
 
                 Spacer(Modifier.height(24.dp))
